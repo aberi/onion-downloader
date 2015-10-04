@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <assert.h>
 
 #include "hash.h"
 #include "opt.h"
@@ -158,6 +159,7 @@ main(int argc, char *argv[])
 	struct sockaddr_in client, server;
 	struct request *req;
 	struct response *resp = malloc (sizeof (struct response));
+	struct content *response_content;
 	resp->status = -1;
 
 	if (argc < 2)
@@ -200,20 +202,24 @@ main(int argc, char *argv[])
 		
 		req = create_request (&u, names, values, method);
 		send_request (sock, req);
-		response_body = read_response (sock, buf, sizeof (buf));
-		parse_response (response_body, resp);
+		response_content = read_response (sock, buf, sizeof (buf));
+		response_body = response_content->body;
+	
+		assert (response_body);	
+	
+		parse_response (response_content, resp);
 
 		if (options.show_server_response)
 			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
 
 		if (options.print_content && options.output_fd != STDOUT_FILENO)
-			write (STDOUT_FILENO, resp->content, resp->content_len); 
+			write (STDOUT_FILENO, response_body, response_content->len);  /* Don't do this, just write the content
+																			to the file during parsing */
 
 		switch (resp->status)
 		{
 			char *location;
 			case HTTP_OK:
-				write (options.output_fd, resp->content, resp->content_len); 
 				return 0;
 			case HTTP_MOVED:
 			case HTTP_FOUND:

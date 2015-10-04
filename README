@@ -12,12 +12,15 @@ The program should do the following
 		- Repeat step 2. Later, we may try to keep the existing connection if we are connected to the same host/keep track of persistent
 			connections (if the header of the response says that the connection is of type keep-alive, then we should recongnize that
 			and reuse it when applicable)
-		- If a maximum number of redirections is reached, stop trying to redirect (also, if we redirect to the exact same place, we should
-			just stop the loop there, because there is no reason to believe that the result will change)
+		- If a maximum number of redirections is reached, stop trying to redirect (also, if we redirect to the exact same place, we 
+			should just stop the loop there, because there is no reason to believe that the result will change)
 	10. If the server gives a 400, exit with an appropriate error code. 
 
 
-
+We are going to make the decision to write to the file as the server content is being read. That means we're going to have to locate the 
+end of the response header aka the beginning of the actual content and then start writing to the output file but this shouldn't take too 
+much. I'm not really sure what's going wrong with the reading of the pdf. Maybe the null-termination is causing a problem... let's
+investigate.
 
 
 Good news -- THE HASH TABLE ACTUALLY WORKS!!!

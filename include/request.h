@@ -49,11 +49,11 @@ struct request
 struct request *create_request (url_t *url, char **names, char **values, char *method);
 
 /* Read the response from the server and parse it */
-int parse_response (char *body, struct response *resp);
+int parse_response (struct content *, struct response *resp);
 
 void print_content (const struct content *);
 
-char *read_response (int sock, char *buf, int len);
+struct content *read_response (int sock, char *buf, int len);
 
 int put_request_header (struct request *, char *, char *);
 int send_request (int sock, struct request *req);

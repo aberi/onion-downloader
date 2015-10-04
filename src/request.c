@@ -3,6 +3,7 @@
 #include "url.h"
 #include "hash.h"
 #include "request.h"
+#include "opt.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,8 @@
 
 #define APPEND(p, str, len) strncpy (p, str, len); \
 							p += len
+
+struct opt options;  /* global options variable */
 
 struct request *
 make_request (url_t *url, struct hash_table *table, char *method)
@@ -190,11 +193,12 @@ write_to_socket (int sock, char *buf, int len)
 #endif
 	
 int
-parse_response (char *body, struct response *resp)
+parse_response (struct content *resp_content, struct response *resp)
 {
-	char *p = body;
-	if (!resp || !body)
-		return -1;
+	char *p = resp_content->body;
+	char *body = resp_content->body;
+	size_t length = resp_content->len;
+
 	/* The response should begin with HTTP/\d.\d \d\d\d, that is, HTTP version and status code */
 	if (strncmp (p, "HTTP", 4) != 0) 
 	{
@@ -251,14 +255,9 @@ parse_response (char *body, struct response *resp)
 		hash_table_put (resp->headers, name, value);
 	}	
 
-	resp->header_body = malloc (p - body + 1);
+	resp->header_body = calloc (1, p - body + 1);
 	strncpy (resp->header_body, body, p - body);
 
-	resp->content= xstrdup (p);
-	if (!resp->content)
-		return -1;
-	
-	resp->content_len = strlen (p);
 	return 0;
 }
 
@@ -299,18 +298,32 @@ remove_null_characters (char *str, int length)
 	return str;
 }
 
-char *
+struct content*
 read_response (int sock, char *buf, int len)
 {
 	/* Read the header of the response */
 	
 	char *response_body = NULL;
+	struct content *ret;
 	int n_bytes, n_read = 0;
+	int is_content = 0;
 	
 	memset (buf, 0, len);
 	while ((n_bytes = read (sock, buf, len)) > 0)
 	{
 		int current_length = n_read;
+		char *brk;
+		if (is_content)
+			write (options.output_fd, buf, n_bytes);	
+		else
+		{
+			brk = strstr (buf, "\r\n\r\n");
+			if (brk)
+			{
+				is_content = 1;	
+				write (options.output_fd, brk + 4, (buf + len) - brk - 4);
+			}
+		}
 		n_read += n_bytes;
 		response_body = realloc (response_body, n_read);
 		if (!response_body)
@@ -334,7 +347,11 @@ read_response (int sock, char *buf, int len)
 	#ifdef DEBUG
 	fprintf (stderr, "Length of response: %d\n", n_read);
 	#endif
-	return response_body;
+	
+	ret = malloc (sizeof (struct content));
+	ret->body = response_body;
+	ret->len = n_read;
+	return ret;
 }
 
 /* needs serious testing */
