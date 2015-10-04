@@ -193,9 +193,6 @@ int
 parse_response (char *body, struct response *resp)
 {
 	char *p = body;
-	int i, n_headers;
-	char *begin;
-	char buf[BUFSIZ];
 	if (!resp || !body)
 		return -1;
 	/* The response should begin with HTTP/\d.\d \d\d\d, that is, HTTP version and status code */
@@ -265,11 +262,41 @@ parse_response (char *body, struct response *resp)
 	return 0;
 }
 
+void
+print_content (const struct content *cont)
+{
+	int n_printed = 0;
+	int l;
+	char *cur = cont->body;
+
+	while (n_printed < cont->len)
+	{
+		l = strlen (cur);
+		printf ("%s\n", cur);
+		n_printed += (l + 1);
+		cur += (l + 1);
+	}
+}
+
 /* See how easy it is... oh my goodness */
 int
 add_header_to_request (struct request *req, char *name, char *value)
 {
 	return hash_table_put (req->headers, name, value);
+}
+
+/* Remove null characters that come before LENGTH in the string.
+ * Assume str + length is in a valid portion of memory. */
+char *
+remove_null_characters (char *str, int length)
+{
+	int i;
+	for (i = 0; i < length; i++)
+	{
+		if (str[i] == '\0')
+			memmove (&str[i], &str[i] + 1, (str + length) - (&str[i] + 1));
+	}
+	return str;
 }
 
 char *
@@ -292,7 +319,11 @@ read_response (int sock, char *buf, int len)
 			exit (1);
 		}
 
+		/* remove_null_characters (buf, n_bytes); */
 		strncpy (response_body + current_length, buf, n_bytes);
+
+		/*fprintf (stderr, "%s\n", buf);	 */
+	
 		response_body[n_read] = '\0';
 		memset (buf, 0, len);
 	}
@@ -300,6 +331,9 @@ read_response (int sock, char *buf, int len)
 	/* Determine whether we want to read the content */
 	
 	/* Read the content and write to the proper output stream if applicable */
+	#ifdef DEBUG
+	fprintf (stderr, "Length of response: %d\n", n_read);
+	#endif
 	return response_body;
 }
 

@@ -17,6 +17,7 @@
 #include "utils.h"
 #include "types.h"
 #include "request.h"
+#include "file.h"
 
 #define IPV4_ADDR_LEN 4
 #define MAX_REDIRECT 5
@@ -43,8 +44,10 @@ init_opt (int argc, char **argv, char *opts)
 	options.recursive = 0;
 	options.output_fd = -1;
 	options.show_server_response = 0;
-
+	
+	#ifdef DEBUG
 	fprintf (stderr, "URL to be parsed: %s\n", options.url);	
+	#endif
 
 	optind++;	
 	while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1)
@@ -167,6 +170,11 @@ main(int argc, char *argv[])
 	/* Write to a file based on the path of the URL. If the path is /, use index.html by default */
 	{
 		char *path = strdup (u.path + 1);
+		#ifdef DEBUG
+		fprintf (stderr, "Writing to %s\n", path);
+		#endif
+		if (make_dirs (path) != DIR_EXISTS)
+			fprintf (stderr, "The path does not exist.\n");
 		if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
 		{
 			if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
@@ -211,7 +219,9 @@ main(int argc, char *argv[])
 			case HTTP_FOUND:
 				if ((location = hash_table_get (resp->headers, "Location")))
 				{	
+					#ifdef DEBUG
 					fprintf (stderr, "New location is %s\n", location); 
+					#endif
 					parse_url (location, &u);	
 					print_url (&u);
 					num_redirect++;

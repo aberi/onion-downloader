@@ -10,6 +10,17 @@
 #define HTTP_BAD_REQ 400
 #define HTTP_NOT_FOUND 404
 
+struct content
+{
+	char *body; /* Strlen may not give the full length of the body.
+					For example, if we are downloading a pdf with
+					binary data, a 0 does not indicate the end of
+					a string, but it may be part of the body.
+					That's why we are using a length field to 
+					indicate how big the body actually is */
+	size_t len;
+};
+
 struct response
 {
 	char *protocol;
@@ -39,6 +50,8 @@ struct request *create_request (url_t *url, char **names, char **values, char *m
 
 /* Read the response from the server and parse it */
 int parse_response (char *body, struct response *resp);
+
+void print_content (const struct content *);
 
 char *read_response (int sock, char *buf, int len);
 
