@@ -3,6 +3,7 @@
 #include "opt.h"
 #include "utils.h"
 #include "request.h"
+#include "file.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -14,6 +15,41 @@ struct opt options;
 
 static char *names[] = {"Host", "User-Agent", "Connection", NULL};
 static char *vals[] = {"www.google.com", "Wget-1.16 (linux-gnu)", "keep-alive", NULL};
+
+int
+test_file_creation (void)
+{
+	char *filename = "foo.txt";
+	exist_t status;
+	
+	/* make_dirs (filename);*/
+
+	if (strcmp ("foo", strip_tail_from_path ("foo/bar")) != 0 ||
+		strcmp ("foo/bar", strip_tail_from_path ("foo/bar/baz")) != 0 ||
+		strcmp ("foo/bar/baz", strip_tail_from_path ("foo/bar/baz/blah")) != 0)
+		goto fail;	
+	
+	if ((status = make_dirs ("foo/bar/")) != DIR_EXISTS)
+	{
+		switch (status)
+		{
+			case NO_EXIST:
+				fprintf (stderr, "Failed to create directory, it should not exist in the current file hierarchy. \
+									There may be a file specified in a substring of the path that already exists.\n");
+				break;
+			case FILE_EXISTS:
+				fprintf (stderr, "A file by the name of %s already exists, or a file somewhere along the path \
+							of %s exists currently. Failed to create the directory\n");
+				break;
+		}
+		goto fail;
+	}
+	
+	return 0;	
+		
+	fail:
+		return -1;
+}
 
 int
 test_request (void)
@@ -81,6 +117,9 @@ main (void)
 
 	if (test_request () < 0)
 		fprintf (stderr, "Requests not working properly\n");
+
+	if (test_file_creation () < 0)
+		fprintf (stderr, "File creation not working properly\n");
 
 	return 0;
 }

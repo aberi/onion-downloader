@@ -11,6 +11,7 @@ struct opt {
 	char *method;
 	int output_fd;
 	int show_server_response;
+	int print_content;
 };
 
 extern struct opt options;

@@ -3,11 +3,14 @@ CFLAGS = -g -ansi -pedantic -Wall
 
 INCLUDE = -I ./include
 
-client: http_client.o url.o utils.o hash.o request.o
-	$(CC) -o client http_client.o url.o utils.o hash.o request.o
+client: http_client.o url.o utils.o hash.o request.o file.o 
+	$(CC) -o client http_client.o url.o utils.o hash.o request.o file.o
 
 request.o: src/request.c
 	$(CC) -c src/request.c $(CFLAGS) $(INCLUDE)
+
+file.o: src/file.c
+	$(CC) -c src/file.c $(CFLAGS) $(INCLUDE)
 
 hash.o: src/hash.c
 	$(CC) -c src/hash.c $(CFLAGS) $(INCLUDE)	
@@ -21,8 +24,8 @@ utils.o: src/utils.c
 http_client.o: src/http_client.c 
 	$(CC) -c src/http_client.c $(CFLAGS) $(INCLUDE) 
 
-unit_test: unit_test.o hash.o url.o utils.o request.o
-	$(CC) -o unit_test unit_test.o hash.o url.o utils.o request.o
+unit_test: unit_test.o hash.o url.o utils.o request.o file.o
+	$(CC) -o unit_test unit_test.o hash.o url.o utils.o request.o file.o
 
 unit_test.o: unit_test.c
 	$(CC) $(CFLAGS) $(INCLUDE) -c unit_test.c

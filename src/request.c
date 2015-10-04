@@ -254,6 +254,9 @@ parse_response (char *body, struct response *resp)
 		hash_table_put (resp->headers, name, value);
 	}	
 
+	resp->header_body = malloc (p - body + 1);
+	strncpy (resp->header_body, body, p - body);
+
 	resp->content= xstrdup (p);
 	if (!resp->content)
 		return -1;

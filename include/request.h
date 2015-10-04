@@ -13,6 +13,7 @@
 struct response
 {
 	char *protocol;
+	char *header_body;
 	struct hash_table *headers;
 	char *content; /* Actual response (this is what we actually read) */
 	int content_len;

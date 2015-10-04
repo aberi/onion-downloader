@@ -19,10 +19,10 @@
 #include "request.h"
 
 #define IPV4_ADDR_LEN 4
-
+#define MAX_REDIRECT 5
 #define HTTP_PORT 80
 
-static char *optstring = "Rm:o:p:r";
+static char *optstring = "Rm:o:Op:r";
 
 struct opt options;
 
@@ -31,7 +31,9 @@ struct opt options;
 
 void usage(void);
 
-static struct option longopts[] = {{"show-response", no_argument, NULL, 'R'}, {"output-file", required_argument, NULL, 'o'}};
+static struct option longopts[] = 
+{{"show-response", no_argument,       NULL, 'R'}, 
+ {"output-file",   required_argument, NULL, 'o'}};
 
 void
 init_opt (int argc, char **argv, char *opts)
@@ -39,7 +41,7 @@ init_opt (int argc, char **argv, char *opts)
 	int opt;
 	options.url = strdup (argv[1]);
 	options.recursive = 0;
-	options.output_fd = STDOUT_FILENO;
+	options.output_fd = -1;
 	options.show_server_response = 0;
 
 	fprintf (stderr, "URL to be parsed: %s\n", options.url);	
@@ -49,12 +51,15 @@ init_opt (int argc, char **argv, char *opts)
 	{
 		switch (opt)
 		{
+			case 'O':
+				options.print_content = 1;
+				break;
 			case 'o':
 				options.output_file = strdup (optarg);
 				if ((options.output_fd = open (options.output_file, O_WRONLY | O_TRUNC | O_CREAT, 0666)) < 0)
 				{	
-					if ((options.output_fd = open ("./index.html", O_WRONLY | O_TRUNC | O_CREAT, 0666)) < 0)
-						perror ("Output file name not valid... Using standard output instead!");	
+						perror ("Output file name not valid... Will attempt to save to a file based on the \
+									path of the URL.");	
 				}	
 				break;	
 			case 'p':
@@ -73,9 +78,6 @@ init_opt (int argc, char **argv, char *opts)
 				break;
 		}	
 	}
-	
-	if (options.output_fd < 0)
-		options.output_fd = STDOUT_FILENO;
 }
 
 int
@@ -146,44 +148,83 @@ main(int argc, char *argv[])
 	char *method = "GET";
 	char *response_body;
 	char buf[BUFSIZ];
-	int sock, i;
+	int sock, num_redirect = 0;
 
 	url_t u;
 
 	struct sockaddr_in client, server;
 	struct request *req;
 	struct response *resp = malloc (sizeof (struct response));
+	resp->status = -1;
 
 	if (argc < 2)
 		usage ();
 
 	init_opt (argc, argv, optstring);
-
 	parse_url (options.url, &u);
 
-	sock = create_and_bind_tcp_socket (&client);
-	resolve_host (u.host, &server, HTTP_PORT);
-
-	if (connect_to_ip (sock, &server) < 0)
+	if (options.output_fd < 0)
+	/* Write to a file based on the path of the URL. If the path is /, use index.html by default */
 	{
-		perror ("Unable to connect to the server");
-		exit (1);	
-	}
-	
-	req = create_request (&u, names, values, method);
-	send_request (sock, req);
-	response_body = read_response (sock, buf, sizeof (buf));
-	parse_response (response_body, resp);
-
-	write (options.output_fd, resp->content, resp->content_len); 
-
-	if (options.show_server_response)
-	{
-		printf ("\n\n************* SERVER RESPONSE ***************\n\n");
-		for (i = 0; i < resp->headers->size; i++)
+		char *path = strdup (u.path + 1);
+		if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
 		{
-			if (resp->headers->table[i].key && resp->headers->table[i].state == OCCUPIED)
-				printf ("%s: %s\n", resp->headers->table[i].key, resp->headers->table[i].value);
+			if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+				options.output_fd = STDOUT_FILENO;
+			else
+				options.output_file = strdup ("index.html");	
+		}
+		else
+			options.output_file = strdup (path);
+		free (path);	
+	}
+
+	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
+	{
+		sock = create_and_bind_tcp_socket (&client);
+		resolve_host (u.host, &server, HTTP_PORT);
+	
+		if (connect_to_ip (sock, &server) < 0)
+		{
+			perror ("Unable to connect to the server");
+			exit (1);	
+		}
+		
+		req = create_request (&u, names, values, method);
+		send_request (sock, req);
+		response_body = read_response (sock, buf, sizeof (buf));
+		parse_response (response_body, resp);
+
+		if (options.show_server_response)
+			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
+
+		if (options.print_content && options.output_fd != STDOUT_FILENO)
+			write (STDOUT_FILENO, resp->content, resp->content_len); 
+
+		switch (resp->status)
+		{
+			char *location;
+			case HTTP_OK:
+				write (options.output_fd, resp->content, resp->content_len); 
+				return 0;
+			case HTTP_MOVED:
+			case HTTP_FOUND:
+				if ((location = hash_table_get (resp->headers, "Location")))
+				{	
+					fprintf (stderr, "New location is %s\n", location); 
+					parse_url (location, &u);	
+					print_url (&u);
+					num_redirect++;
+				}
+				else
+					return 1;
+				break;
+			case HTTP_NOT_FOUND:
+				return 1;
+				break;
+			default:
+				return 1;
+				break;
 		}
 	}
 
