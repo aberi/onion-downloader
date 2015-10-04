@@ -1,0 +1,39 @@
+#ifndef _URL_H_
+#define _URL_H_
+
+#include <stdio.h>
+
+typedef enum {
+	URL_OK,
+	MALFORMED_URL,
+	PROTO_NOT_SUP
+} url_err_t;
+
+typedef struct url {
+	char *full_url; /* Complete URL made up of the components below */
+
+	char *local_filename;
+	
+	int port;
+
+	char *host; /* Hostname of the URL */
+	char *protocol; 
+	char *path; /* Resource requested */
+	enum {
+		PATH_ABS,
+		PATH_REL	
+	} path_type;
+	char *query; /* "?name&value..." */
+	int length; 
+
+	/* If the query contains relevant information, it will be here */
+	int is_referred; /* Did we get to this URL from a redirection? */
+	char *reference; /* URL from which we were redirected to the current one */
+} url_t;
+
+int create_directories (char *);
+char *url_file_name(url_t *);
+url_err_t parse_url (char *, url_t *);
+void print_url (url_t *);
+
+#endif

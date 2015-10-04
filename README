@@ -1,0 +1,23 @@
+The program should do the following
+
+	1. Read command line arguments: URL to download, an output file name, and whether the URL should be downloded recursively. That's it for now.
+	2. Parse the URL so that we know the protocol, hostname, port, and path. That's it for now.
+	3. Resolve the host.
+	4. Connect to the host.
+	5. Create an HTTP request to the host requesting the file specified by the path in the URL.
+	6. Read the response header into a response structure.
+	7. Determine the HTTP status code given by the server.
+	8. If the server gives a 200, read the content into the output file (or standard output if no output file has been specified).
+	9. If the server gives a 3xx, parse the response header and extract the 'Location' field, provided that one exists.
+		- Repeat step 2. Later, we may try to keep the existing connection if we are connected to the same host/keep track of persistent
+			connections (if the header of the response says that the connection is of type keep-alive, then we should recongnize that
+			and reuse it when applicable)
+		- If a maximum number of redirections is reached, stop trying to redirect (also, if we redirect to the exact same place, we should
+			just stop the loop there, because there is no reason to believe that the result will change)
+	10. If the server gives a 400, exit with an appropriate error code. 
+
+
+
+
+
+Good news -- THE HASH TABLE ACTUALLY WORKS!!!
