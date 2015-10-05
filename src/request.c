@@ -197,7 +197,6 @@ parse_response (struct content *resp_content, struct response *resp)
 {
 	char *p = resp_content->body;
 	char *body = resp_content->body;
-	size_t length = resp_content->len;
 
 	/* The response should begin with HTTP/\d.\d \d\d\d, that is, HTTP version and status code */
 	if (strncmp (p, "HTTP", 4) != 0) 
