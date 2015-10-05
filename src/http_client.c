@@ -143,8 +143,21 @@ usage (void)
 	exit (1);
 }
 
+
 char *names[] = {"Host", "User-Agent", "Connection", NULL};
 char *values[] = {"www.google.com", "Wget-1.16 (linux-gnu)", "Keep-Alive", NULL};
+
+struct *hash_table
+fill_header_table (char **names, char **values)
+{
+	struct hash_table *headers = hash_table_new (31);	
+	while (*names)
+	{
+		hash_table_put (headers, *names++, *values++);	
+	}
+		
+	return headers;
+}
 
 int 
 main(int argc, char *argv[])
@@ -199,7 +212,6 @@ main(int argc, char *argv[])
 			perror ("Unable to connect to the server");
 			exit (1);	
 		}
-		
 		req = create_request (&u, names, values, method);
 		send_request (sock, req);
 		response_content = read_response (sock, buf, sizeof (buf));

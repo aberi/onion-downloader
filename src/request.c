@@ -72,6 +72,10 @@ make_request (url_t *url, struct hash_table *table, char *method)
 	}
 
 	APPEND(ptr, "\r\n", 2);
+
+	#ifdef DEBUG	
+	fprintf (stderr, "%s\n", req->content);
+	#endif
 		
 	return req;
 	
@@ -385,6 +389,9 @@ put_request_header (struct request *req, char *name, char *value)
 
 int send_request (int sock, struct request *req)
 {
+	#ifdef DEBUG
+	fprintf (stderr, "%s\n", req->content);	
+	#endif
 	return write_to_socket (sock, req->content, req->content_len);		
 }
 
