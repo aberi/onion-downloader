@@ -23,4 +23,19 @@ much. I'm not really sure what's going wrong with the reading of the pdf. Maybe 
 investigate.
 
 
-Good news -- THE HASH TABLE ACTUALLY WORKS!!!
+Good news -- THE HASH TABLE ACTUALLY WORKS!!! (for the most part)
+
+So this version is clearly superior to the previous one. It is much more clean.
+
+The big TODOs:
+
+	1. Parsing
+	2. Link conversion to local file paths
+	3. SSL support (with OpenSSL, no GNUTLS)
+
+Unfortunately, I have a ton of schoolwork this week so I'm not sure how much I'm going to be able to carry this moment into the
+week. Tomorrow I will try to get all of my homework done (not joking) and then study for 6-7 hours for the exam over the next two days
+but I should have some free time to work on this. This is why I don't have a social life -- otherwise there would be no way that I could
+possibly get good grades and work on personal projects. Also, stop procrastinating internship applications. That's another thing I'm going
+to do tomorrow. Tomorrow is a no-BS work day. I will be attending classes and working quite literally the entire day with the occasionally
+break by transitioning locations. It's gonna be a lot of fun.

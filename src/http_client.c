@@ -147,7 +147,7 @@ usage (void)
 char *names[] = {"Host", "User-Agent", "Connection", NULL};
 char *values[] = {"www.google.com", "Wget-1.16 (linux-gnu)", "Keep-Alive", NULL};
 
-struct *hash_table
+struct hash_table *
 fill_header_table (char **names, char **values)
 {
 	struct hash_table *headers = hash_table_new (31);	
@@ -157,6 +157,31 @@ fill_header_table (char **names, char **values)
 	}
 		
 	return headers;
+}
+
+void
+create_output_file (char *url_path)
+{
+	char *path = strdup (url_path + 1);
+	if (strlen(path) && path[strlen (path) - 1] == '/') /* Assume we are doing file creation! If the request is
+											to a "directory" of a webpage, treat it like a 
+											regular webpage by default  */
+		path[strlen (path) - 1] = '\0';
+		#ifdef DEBUG
+		fprintf (stderr, "Writing to %s\n", path);
+		#endif
+		if (make_dirs (path) != DIR_EXISTS)
+			fprintf (stderr, "The path does not exist.\n");
+		if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+		{
+			if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+				options.output_fd = STDOUT_FILENO;
+			else
+				options.output_file = strdup ("index.html");	
+		}
+		else
+			options.output_file = strdup (path);
+		free (path);	
 }
 
 int 
@@ -173,6 +198,7 @@ main(int argc, char *argv[])
 	struct request *req;
 	struct response *resp = malloc (sizeof (struct response));
 	struct content *response_content;
+	struct hash_table *headers;
 	resp->status = -1;
 
 	if (argc < 2)
@@ -184,22 +210,7 @@ main(int argc, char *argv[])
 	if (options.output_fd < 0)
 	/* Write to a file based on the path of the URL. If the path is /, use index.html by default */
 	{
-		char *path = strdup (u.path + 1);
-		#ifdef DEBUG
-		fprintf (stderr, "Writing to %s\n", path);
-		#endif
-		if (make_dirs (path) != DIR_EXISTS)
-			fprintf (stderr, "The path does not exist.\n");
-		if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
-		{
-			if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
-				options.output_fd = STDOUT_FILENO;
-			else
-				options.output_file = strdup ("index.html");	
-		}
-		else
-			options.output_file = strdup (path);
-		free (path);	
+		create_output_file (u.path);
 	}
 
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
@@ -212,7 +223,11 @@ main(int argc, char *argv[])
 			perror ("Unable to connect to the server");
 			exit (1);	
 		}
-		req = create_request (&u, names, values, method);
+
+		headers = fill_header_table (names, values);
+		
+		hash_table_put (headers, "Host", u.host);		
+		req = make_request (&u, headers, method);
 		send_request (sock, req);
 		response_content = read_response (sock, buf, sizeof (buf));
 		response_body = response_content->body;
@@ -242,6 +257,8 @@ main(int argc, char *argv[])
 					#endif
 					parse_url (location, &u);	
 					print_url (&u);
+					create_output_file (u.path); /* Truncate the previous file... we don't want
+					"301 Moved Permanently" showing up at the top of the file */
 					num_redirect++;
 				}
 				else

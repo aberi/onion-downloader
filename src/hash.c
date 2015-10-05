@@ -42,7 +42,7 @@ struct hash_table *
 hash_table_new (size_t size)
 {
 	int i;
-	struct hash_table *table = malloc (sizeof (struct hash_table));
+	struct hash_table *table = calloc (1, sizeof (struct hash_table));
 		
 	table->size = size;
 	table->table = malloc (sizeof (pair) * size);

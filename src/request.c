@@ -73,9 +73,6 @@ make_request (url_t *url, struct hash_table *table, char *method)
 
 	APPEND(ptr, "\r\n", 2);
 
-	#ifdef DEBUG	
-	fprintf (stderr, "%s\n", req->content);
-	#endif
 		
 	return req;
 	

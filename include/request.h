@@ -47,6 +47,9 @@ struct request
 
 /* Null-terminated list of names and their corresponding values for the headers */
 struct request *create_request (url_t *url, char **names, char **values, char *method);
+struct request *make_request (url_t *url, struct hash_table *, char *method);
+int add_header_to_request (struct request *req, char *name, char *value);
+
 
 /* Read the response from the server and parse it */
 int parse_response (struct content *, struct response *resp);

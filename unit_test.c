@@ -92,6 +92,8 @@ test_hash_table (void)
 	if (!val) goto fail;	
 	
 	val = hash_table_get (ht, "What's");
+	
+	fprintf (stderr, "What's %s\n", val);
 
 	if (!val) goto fail;	
 	
