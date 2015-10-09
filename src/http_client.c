@@ -111,12 +111,18 @@ int
 resolve_host (const char *hostname, struct sockaddr_in *addr, int port) 
 {
 	struct hostent *host;
+	unsigned char *ad;
+	fprintf (stderr, "Trying to resolve %s...\n", hostname);
+
 	if ((host = gethostbyname (hostname)) == NULL || host->h_length != IPV4_ADDR_LEN || host->h_addr == NULL 
 		|| host->h_addrtype != AF_INET) 
 	{
 		perror ("Couldn't resolve host");
 		exit (1);
 	}
+	
+	ad = (unsigned char *) host->h_addr;
+	fprintf (stderr, "Success, resolved %s to address %d.%d.%d.%d\n", hostname, ad[0], ad[1], ad[2], ad[3]);
 
 	addr->sin_family = AF_INET;
 	memcpy ((void*) &addr->sin_addr.s_addr, host->h_addr, host->h_length); 
@@ -162,26 +168,32 @@ fill_header_table (char **names, char **values)
 void
 create_output_file (char *url_path)
 {
-	char *path = strdup (url_path + 1);
+	char *path = strdup (url_path + 1); /* It must always be the case that URL paths within the url_t struct 
+												begin with a '/', otherwise this will cause serious problems! */
+
 	if (strlen(path) && path[strlen (path) - 1] == '/') /* Assume we are doing file creation! If the request is
 											to a "directory" of a webpage, treat it like a 
 											regular webpage by default  */
 		path[strlen (path) - 1] = '\0';
-		#ifdef DEBUG
-		fprintf (stderr, "Writing to %s\n", path);
-		#endif
-		if (make_dirs (path) != DIR_EXISTS)
-			fprintf (stderr, "The path does not exist.\n");
-		if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
-		{
-			if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
-				options.output_fd = STDOUT_FILENO;
-			else
-				options.output_file = strdup ("index.html");	
-		}
+
+	#ifdef DEBUG
+	fprintf (stderr, "Writing to %s\n", path);
+	#endif
+
+	if (make_dirs (path) != DIR_EXISTS)
+		fprintf (stderr, "The directories necessary to create the file in the location given by %s do not exist.\n", path);
+		/* It's definitely possible (likely) that we are just going to use index.html as the filename if this
+ 		 * has happened. */
+	if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+	{
+		if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+			options.output_fd = STDOUT_FILENO;
 		else
-			options.output_file = strdup (path);
-		free (path);	
+			options.output_file = strdup ("index.html");	
+	}
+	else
+		options.output_file = strdup (path);
+	free (path);	
 }
 
 int 
@@ -190,16 +202,17 @@ main(int argc, char *argv[])
 	char *method = "GET";
 	char *response_body;
 	char buf[BUFSIZ];
-	int sock, num_redirect = 0;
+	int sock, num_redirect = 0; /* Socket that is connected to the host and the number of redirections (3xx codes)
+									that have taken place during the current attempt to download a webpage */
 
 	url_t u;
 
-	struct sockaddr_in client, server;
-	struct request *req;
-	struct response *resp = malloc (sizeof (struct response));
-	struct content *response_content;
-	struct hash_table *headers;
-	resp->status = -1;
+	struct sockaddr_in client, server; /* Addresses of the local and remote host */
+	struct request *req; /* Request to be sent to remote host. Currently must be an HTTP request */  
+	struct response *resp = malloc (sizeof (struct response)); /* Response given by remote host */
+	struct content *response_content; /* File that would be displayed on a web browser. */
+	struct hash_table *headers; 
+	resp->status = -1; /* Indicate that the server has not responded yet */
 
 	if (argc < 2)
 		usage ();
@@ -208,10 +221,8 @@ main(int argc, char *argv[])
 	parse_url (options.url, &u);
 
 	if (options.output_fd < 0)
-	/* Write to a file based on the path of the URL. If the path is /, use index.html by default */
-	{
+	/* Write to a file based on the path of the URL. If the path is "/", use index.html by default */
 		create_output_file (u.path);
-	}
 
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
@@ -224,30 +235,48 @@ main(int argc, char *argv[])
 			exit (1);	
 		}
 
-		headers = fill_header_table (names, values);
-		
+		headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
 		hash_table_put (headers, "Host", u.host);		
+
+		/* Always create requests from a struct hash_table. Don't use a pair of char **; we can't
+ 			easily insert and remove from a pair of char ** like we can with a struct hash_table */
 		req = make_request (&u, headers, method);
 		send_request (sock, req);
+
+		/* I have written read_response so that it will write to the output file immediately after each
+ 			read call that reads actual content (headers will not be written to the output file). That
+			means we don't have to worry about the output file after this has been handled. In the case
+			of a redirection, the new file will overwrite the old one. TODO: Handle the case where
+			server returns status 4xx.  */
 		response_content = read_response (sock, buf, sizeof (buf));
 		response_body = response_content->body;
-	
-		assert (response_body);	
-	
+
+		/* Compile the response headers into a hash table and get the status (server response code) */	
 		parse_response (response_content, resp);
 
+		/* Good for debugging purposes */
 		if (options.show_server_response)
 			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
 
+		/* Good for debugging purposes */
 		if (options.print_content && options.output_fd != STDOUT_FILENO)
 			write (STDOUT_FILENO, response_body, response_content->len);  /* Don't do this, just write the content
 																			to the file during parsing */
 
 		switch (resp->status)
 		{
-			char *location;
+			char *location, *fmt;
 			case HTTP_OK:
-				return 0;
+				return 0; /* Output file is written, nothing else to do (but once we
+								implement recursive downloading, this will change. We
+								will need to decide if we want to recurse, get the 
+								links from the output file by parsing it, and visit
+								every appropriate link. Don't worry about things
+								like persistent connections just yet, but they
+								will become essential later. You don't want to
+								have to reconnect to the same host 1000 times 
+								when trying to mirror a site. You also want
+								to be able to use cookies. */
 			case HTTP_MOVED:
 			case HTTP_FOUND:
 				if ((location = hash_table_get (resp->headers, "Location")))
@@ -256,7 +285,7 @@ main(int argc, char *argv[])
 					fprintf (stderr, "New location is %s\n", location); 
 					#endif
 					parse_url (location, &u);	
-					print_url (&u);
+					/* print_url (&u); */
 					create_output_file (u.path); /* Truncate the previous file... we don't want
 					"301 Moved Permanently" showing up at the top of the file */
 					num_redirect++;
@@ -264,7 +293,14 @@ main(int argc, char *argv[])
 				else
 					return 1;
 				break;
-			case HTTP_NOT_FOUND:
+			case HTTP_NOT_FOUND: /* Could rm the output file */
+				fmt = "rm %s";
+				memset (buf, 0, sizeof (buf));
+				sprintf (buf, fmt, options.output_file);
+				#ifdef DEBUG
+				fprintf (stderr, "Calling \"%s\"\n", buf);
+				#endif
+				system (buf);
 				return 1;
 				break;
 			default:

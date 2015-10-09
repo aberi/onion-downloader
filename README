@@ -39,3 +39,7 @@ but I should have some free time to work on this. This is why I don't have a soc
 possibly get good grades and work on personal projects. Also, stop procrastinating internship applications. That's another thing I'm going
 to do tomorrow. Tomorrow is a no-BS work day. I will be attending classes and working quite literally the entire day with the occasionally
 break by transitioning locations. It's gonna be a lot of fun.
+
+The reason we're still getting those segfaults is because we're loading the entire file into memory... don't do that.
+That's going to be the next fix. Once that's taken care of, we should be able to download larger files than we are
+currently capable of.

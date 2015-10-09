@@ -223,7 +223,7 @@ parse_response (struct content *resp_content, struct response *resp)
 		return -1;
 	}
 	resp->status = 100 * (p[0] - '0') + 10 * (p[1] - '0') + p[2] - '0';
-	fprintf (stderr, "Found status code %d\n", resp->status);
+	fprintf (stderr, "Server returned status %d\n", resp->status);
 	
 	/* Find the next line. This is where the headers should begin */
 
@@ -387,7 +387,7 @@ put_request_header (struct request *req, char *name, char *value)
 int send_request (int sock, struct request *req)
 {
 	#ifdef DEBUG
-	fprintf (stderr, "%s\n", req->content);	
+	fprintf (stderr, "\n%s\n", req->content);	
 	#endif
 	return write_to_socket (sock, req->content, req->content_len);		
 }
