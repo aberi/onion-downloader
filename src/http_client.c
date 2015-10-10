@@ -19,6 +19,7 @@
 #include "types.h"
 #include "request.h"
 #include "file.h"
+#include "parse.h"
 
 #define IPV4_ADDR_LEN 4
 #define MAX_REDIRECT 5
@@ -170,20 +171,23 @@ create_output_file (char *url_path)
 {
 	char *path = strdup (url_path + 1); /* It must always be the case that URL paths within the url_t struct 
 												begin with a '/', otherwise this will cause serious problems! */
+	char *temp = path;
 
 	if (strlen(path) && path[strlen (path) - 1] == '/') /* Assume we are doing file creation! If the request is
 											to a "directory" of a webpage, treat it like a 
 											regular webpage by default  */
 		path[strlen (path) - 1] = '\0';
 
-	#ifdef DEBUG
-	fprintf (stderr, "Writing to %s\n", path);
-	#endif
 
-	if (make_dirs (path) != DIR_EXISTS)
+	if (!options.recursive)
+		path = skip_dirs (path);
+	else if (make_dirs (path) != DIR_EXISTS)
 		fprintf (stderr, "The directories necessary to create the file in the location given by %s do not exist.\n", path);
 		/* It's definitely possible (likely) that we are just going to use index.html as the filename if this
  		 * has happened. */
+	#ifdef DEBUG
+	fprintf (stderr, "Writing to %s\n", path);
+	#endif
 	if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
 	{
 		if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
@@ -193,7 +197,7 @@ create_output_file (char *url_path)
 	}
 	else
 		options.output_file = strdup (path);
-	free (path);	
+	free (temp);	
 }
 
 int 
@@ -204,7 +208,6 @@ main(int argc, char *argv[])
 	char buf[BUFSIZ];
 	int sock, num_redirect = 0; /* Socket that is connected to the host and the number of redirections (3xx codes)
 									that have taken place during the current attempt to download a webpage */
-
 	url_t u;
 
 	struct sockaddr_in client, server; /* Addresses of the local and remote host */

@@ -34,12 +34,19 @@ The big TODOs:
 	3. SSL support (with OpenSSL, no GNUTLS)
 
 Unfortunately, I have a ton of schoolwork this week so I'm not sure how much I'm going to be able to carry this moment into the
-week. Tomorrow I will try to get all of my homework done (not joking) and then study for 6-7 hours for the exam over the next two days
+week. Tomorrow I will try to get all of my homework done (I actually got a lot done that day but I still ended up slacking on Thursday 
+and destroyed my 351 grade... not really I only lost a homework, each of which are only 1% of the total grade. But still) and then study 
+for 6-7 hours for the exam over the next two days
+
 but I should have some free time to work on this. This is why I don't have a social life -- otherwise there would be no way that I could
-possibly get good grades and work on personal projects. Also, stop procrastinating internship applications. That's another thing I'm going
-to do tomorrow. Tomorrow is a no-BS work day. I will be attending classes and working quite literally the entire day with the occasionally
-break by transitioning locations. It's gonna be a lot of fun.
+possibly get good grades and work on personal projects. Also, stop procrastinating internship applications. That's another thing I'm 
+going to do tomorrow. Tomorrow is a no-BS work day. I will be attending classes and working quite literally the entire day with the 
+occasionally break by transitioning locations. It's gonna be a lot of fun.
 
 The reason we're still getting those segfaults is because we're loading the entire file into memory... don't do that.
 That's going to be the next fix. Once that's taken care of, we should be able to download larger files than we are
 currently capable of.
+
+Now that I've successfully remembered what the code actually does, it's time to write a parser (THE FUN PART... RIGHT?).
+
+Don't even refer to the previous parser... it sucks. Rewrite the parser (reinvent the wheel).

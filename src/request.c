@@ -183,15 +183,6 @@ write_to_socket (int sock, char *buf, int len)
 	return 0;
 }
 
-#define SKIP_WS(p) if (p) while (*p == ' ' || *p == '\r' || *p == '\n') p++
-
-#ifndef IS_DIGIT
-	#define  IS_DIGIT(d)(((d - '0') >= 0) && ((d - '0') <= 9))
-#endif
-
-#ifndef xstrdup
-	#define xstrdup(s) (s) ? strdup (s) : NULL
-#endif
 	
 int
 parse_response (struct content *resp_content, struct response *resp)

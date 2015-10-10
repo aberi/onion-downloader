@@ -11,7 +11,9 @@
 
 #define MAX_URL_LENGTH 512 /* We won't worry too much about query strings for the moment. */
 
+#ifndef IS_DIGIT
 #define IS_DIGIT(x) (((x) - '0') >= 0 && ((x) - '0' <= 9))
+#endif
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
 #ifndef HTTP_PORT

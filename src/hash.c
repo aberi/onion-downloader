@@ -5,6 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+void 
+hash_table_print (const struct hash_table *table)
+{
+	char **k = keys (table);	
+	
+	while (*k)
+	{
+		char *v = hash_table_get (table, *k);
+		printf ("%s --> %s\n", *k, v);	
+		k++;
+	}
+}
+
 unsigned long
 hash (char *key)
 {
@@ -23,7 +36,7 @@ hash (char *key)
 pair *
 pair_new (void)
 {
-	return malloc (sizeof (pair));
+	return xnew (pair);
 }
 
 pair *
@@ -36,6 +49,28 @@ init_pair (char *key, char *value)
 	p->value = strdup (value);
 	
 	return p;
+}
+
+char **
+keys (const struct hash_table *table)
+{
+	int i, n_occupied = 0, n_inserted = 0;
+	char **list_of_keys;
+	for (i = 0; i < table->size; i++)
+	{	
+		if (table->table[i].state == OCCUPIED)
+			n_occupied++;
+	}	
+	
+	list_of_keys = malloc (sizeof (char *) * n_occupied + 1);
+	for (i = 0; i < table->size; i++)
+	{	
+		if (table->table[i].state == OCCUPIED)
+			list_of_keys[n_inserted++] = strdup (table->table[i].key);
+	}		
+
+	list_of_keys[n_inserted] = NULL;
+	return list_of_keys;
 }
 
 struct hash_table *
