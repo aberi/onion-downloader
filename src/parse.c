@@ -224,7 +224,7 @@ get_all_tags (char *text)
 	do
 	{
 		struct html_tag *t = parse_tag (cur, &next);
-			
+		html_tag_list_add (tags, t);	
 	}
 	while (*(cur = next));
 	
@@ -240,6 +240,8 @@ print_tag (const struct html_tag *tag)
 		hash_table_print (tag->attributes);
 		printf ("Content: \"%s\"\n", tag->content);
 	}
+	else
+		printf ("Tag is null\n");
 	printf ("\n");
 }
 

@@ -192,6 +192,9 @@ test_parse_2 (void)
 	
 	free (l);
 	l = get_all_tags (test);
+
+	printf ("********* TRYING TO PRINT SUCCESSIVE TAGS **********\n");
+	
 	print_all_tags (l);
 	
 	free (t);
