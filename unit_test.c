@@ -185,7 +185,7 @@ test_parse_2 (void)
 	free (t);
 	
 	test = "<img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img><a href=\"aberi.github.io\">\
-</a>";
+</a><img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img>";
 	t = parse_tag (test, &end);
 	printf ("\"%s\"\n", test);
 	print_tag (t);
@@ -203,11 +203,23 @@ test_parse_2 (void)
 }
 
 int
-main (void)
+test_find_tag_among_other (void)
 {
-	if (test_html_tag_list () < 0)
-		fprintf (stderr, "Linked list of HTML tags is not working\n");	
+	struct html_tag_list *htl;
+	char *test = "<img src=\"/icon.png\" href=\"/\">Hello all</img><img src=\"/icon.png\" href=\"/\">Hello all</img>";
+	char *f = find_tag (test, "img");
 	
+	htl = find_all_tags (test, "img");
+	print_all_tags (htl);
+	
+	printf ("Found tag of name %s: %s\n", "img", f);
+	
+	return 0;
+}
+
+int
+main (void)
+{	
 	if (test_hash_table () < 0)
 		fprintf (stderr, "Hash table test failed\n");
 
@@ -222,5 +234,12 @@ main (void)
 
 	if (test_parse_2 () < 0)
 		fprintf (stderr, "Parsing not working properly\n");
+
+	if (test_html_tag_list () < 0)
+		fprintf (stderr, "Linked list of HTML tags is not working\n");	
+
+	if (test_find_tag_among_other () < 0)
+			fprintf (stderr, "Can't find tags properly\n");
+		
 	return 0;
 }

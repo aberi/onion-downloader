@@ -219,7 +219,6 @@ struct html_tag_list *
 get_all_tags (char *text)
 {	
 	struct html_tag_list *tags = html_tag_list_init (NULL);
-	int size = 0;
 	char *cur = text, *next;
 	do
 	{
@@ -229,6 +228,51 @@ get_all_tags (char *text)
 	while (*(cur = next));
 	
 	return tags;
+}
+
+struct html_tag_list *
+find_all_tags (char *text, char *name)
+{
+	struct html_tag_list *list = html_tag_list_init (NULL);
+	char *p = text;
+	while (p && *p)
+	{
+		char *next;
+		struct html_tag *t;
+
+		p = find_tag (p, name);
+		if (!p) 
+			break;
+
+		t = parse_tag (p, &next);
+		html_tag_list_add (list, t);	
+		p = next;
+	}
+	
+	return list;
+}
+
+/* Return a char * pointing to the beginning
+ * of the first tag found of name NAME */
+
+char *
+find_tag (char *text, char *name)
+{
+	while (*text)
+	{
+		while (*text != '<')
+			text++;
+		if (*text == '\0') break;	
+		text++;
+		if (*text == '\0') break;	
+	
+		if (strncmp (text, name, strlen (name)) == 0 &&
+			( *(text + strlen (name)) == ' ' || *(text + strlen (name)) == '>'))
+		{	
+			return text - 1;			
+		}	
+	}
+	return NULL;
 }
 
 void

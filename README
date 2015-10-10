@@ -50,3 +50,11 @@ currently capable of.
 Now that I've successfully remembered what the code actually does, it's time to write a parser (THE FUN PART... RIGHT?).
 
 Don't even refer to the previous parser... it sucks. Rewrite the parser (reinvent the wheel).
+TODO: Support the downloading of large files
+
+Remember, the parser only needs to find all of the links within the HTML file. It doesn't need to create a complete tree. And I doubt that we will
+see many instances where there is a tag nested within an 'a' tag... if we do, then we may have to take action but for now just write the parser
+that will be able to go through the file and find every link and compile them into a list. Then we will traverse that list and download every file on it
+(recursion level = 1)
+
+TIL: XML/XHTML is much easier to parse and has much stricter/simpler? rules. 

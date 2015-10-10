@@ -20,6 +20,9 @@ struct html_tag_list
 struct html_tag_list *get_all_tags (char *);
 struct html_tag_list *html_tag_list_init (struct html_tag *tag);
 int html_tag_list_add (struct html_tag_list *, struct html_tag *);
+struct html_tag_list *find_all_tags (char *text, char *name);
+
+char *find_tag (char *, char *);
 
 void print_all_tags (const struct html_tag_list *);
 struct html_tag *get_tags_of_name (char *name);
