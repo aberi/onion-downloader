@@ -206,13 +206,18 @@ int
 test_find_tag_among_other (void)
 {
 	struct html_tag_list *htl;
-	char *test = "<img src=\"/icon.png\" href=\"/\">Hello all</img><img src=\"/icon.png\" href=\"/\">Hello all</img>";
+	char *test = "<img src=\"/icon.png\" href=\"/\">Hello all</img><img src=\"/icon.png\" href=\"/\">Hello all</img><a href=\"/index.html\"></a><img\
+ src=\"/img.png\" href=\"/index.html\"></img>";
+	char *names[] = {"img", "a", NULL};
 	char *f = find_tag (test, "img");
 	
 	htl = find_all_tags (test, "img");
 	print_all_tags (htl);
 	
-	printf ("Found tag of name %s: %s\n", "img", f);
+	printf ("\n\nTRYING THE DIFFICULT ALGORITHM\n\n");
+		
+	htl = find_tags_by_name (test, names);
+	print_all_tags (htl);
 	
 	return 0;
 }

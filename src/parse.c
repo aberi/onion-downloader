@@ -112,7 +112,9 @@ parse_tag (const char *tag, char **endpoint)
 	char *end;
 	char *ws;
 	int has_attributes;
-	char *start = strchr (tag, '<');
+	char *start;
+	if (!tag) return NULL;
+	start = strchr (tag, '<');
 
 	if (start == NULL)
 		return NULL;
@@ -230,11 +232,92 @@ get_all_tags (char *text)
 	return tags;
 }
 
+int
+n_strings (char **strings) 
+{
+	int c = 0;
+	while (*strings++)
+	{
+		c++;	
+	}
+	return c;
+}
+
+/* Returns false iff all the values of the area are 0 */
+int
+all_false (int *bools, int len)
+{
+	int i, cur = 0;
+	for (i = 0; i < len; i++)
+	{
+		cur = (cur || bools[i]);
+	}
+	
+	return !cur;
+}
+
+int ptr_comp (const void *c1, const void *c2)
+{
+	char *p1 = (char *) c1;
+	char *p2 = (char *) c2;
+		
+	return p1 < p2 ? -1 : (p1 == p2 ? 0 : 1);
+}
+
+/* Returns all tags of each attribute. This seems like it'll be
+ * really inefficient.
+ * This function has been extremely difficult to write.
+ * After writing it and having it work without a huge amount
+ * of debugging, I feel like a master. */
+struct html_tag_list *
+find_tags_by_name (char *text, char **names)
+{
+	struct html_tag_list *full_list = html_tag_list_init (NULL); /* List that will hold all tags in order */
+	int i, n_names = n_strings (names);
+
+	/* Indicate which attributes have been exhausted i.e. those of which we will not find any more in TEXT */
+	int *finished = calloc (n_names, sizeof (int)); 
+	char **curs = calloc (n_names + 1, sizeof (char *)); /* Ensure NULL termination */
+	char **next = calloc (n_names + 1, sizeof (char *));
+	
+	memset (finished, 0xff, n_names * sizeof (int)); /* Default value is true */
+	for (i = 0; i < n_names; i++)
+		curs[i] = text; /* every pointer begins at the beginning of the text */
+
+	while (!all_false (finished, n_names))
+	{	
+		for (i = 0; i < n_names; i++)
+		{	
+			curs[i] = find_tag (curs[i], names[i]);
+			if (!curs[i] || !(*curs[i]))
+			{
+				finished[i] = 0;
+				if (all_false (finished, n_names)) /* Check if there are any more attributes to find */
+					break;
+			}
+		
+		}
+		
+		/* Sort the tags by the order in which they appear in the text,
+			then add them according to that order */	
+		qsort ((void *) &curs, n_names, sizeof (char *), ptr_comp);
+		for (i = 0; i < n_names; i++)
+		{
+			struct html_tag *tag = parse_tag (curs[i], &next[i]);
+			html_tag_list_add (full_list, tag);	
+			curs[i] = next[i];
+		}	
+	}
+	
+	return full_list;
+}
+
 struct html_tag_list *
 find_all_tags (char *text, char *name)
 {
 	struct html_tag_list *list = html_tag_list_init (NULL);
 	char *p = text;
+	if (!text) return NULL;
 	while (p && *p)
 	{
 		char *next;
