@@ -1,0 +1,4 @@
+http://cs.umd.edu/index.php
+http://www.google.com/
+http://linux.die.net/man/3/gethostbyname
+http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf

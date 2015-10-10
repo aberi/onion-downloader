@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>stat(2): file status - Linux man page</title>
+<base href="http://linux.die.net/man/2/stat">
+<link rel="canonical" href="http://linux.die.net/man/2/stat">
+<link rel="stylesheet" type="text/css" href="/style/white.css">
+<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="These functions return information about a file. No permissions are required on the file itself, but-in the case of stat() and lstat() - execute (search) ...">
+<script type="text/javascript">
+<!--
+var _gaq = _gaq || [];_gaq.push(['_setAccount', 'UA-50820-6']);_gaq.push(['_trackPageview']);
+window.google_analytics_uacct = 'UA-50820-6';
+// -->
+</script>
+</head>
+
+<body>
+<div id=bg>
+<div id=logo>
+<a href="http://www.die.net/"><img
+src="/style/logo.svg" alt="die.net" width=120 height=120
+onerror="this.onerror=null; this.src='/style/logo.png'"></a>
+</div>
+<div id=content>
+
+<!-- google_ad_section_start -->
+<h1>stat(2) - Linux man page</h1>
+
+<h2>Name</h2>
+
+<p>stat, fstat, lstat - get file status
+<h2>Synopsis</h2>
+<div id=adright>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:inline-block;width:336px;height:280px"
+     data-ad-client="ca-pub-5823754184406795"
+     data-ad-slot="7130739364"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</div>
+
+
+<p><b>#include &lt;<a href="/include/sys/types.h" rel="nofollow">sys/types.h</a>&gt;<br>
+#include &lt;<a href="/include/sys/stat.h" rel="nofollow">sys/stat.h</a>&gt;<br>
+#include &lt;<a href="/include/unistd.h" rel="nofollow">unistd.h</a>&gt;</b>
+<p><b>int stat(const char *</b><i>path</i><b>, struct stat *</b><i>buf</i><b>);<br>
+int fstat(int</b> <i>fd</i><b>, struct stat *</b><i>buf</i><b>);<br>
+int lstat(const char *</b><i>path</i><b>, struct stat *</b><i>buf</i><b>);</b>
+
+<p>Feature Test Macro Requirements for glibc (see <b><a href="/man/7/feature_test_macros">feature_test_macros</a></b>(7)):
+<dl compact>
+<dt><b>lstat</b>():
+<dd>_BSD_SOURCE || _XOPEN_SOURCE &gt;= 500 || _XOPEN_SOURCE &amp;&amp; _XOPEN_SOURCE_EXTENDED<br>
+|| /* Since glibc 2.10: */ _POSIX_C_SOURCE &gt;= 200112L
+</dl>
+<h2>Description</h2>
+
+<p>These functions return information about a file. No permissions are required on the file itself, but-in the case of <b>stat</b>() and <b>lstat</b>() -
+execute (search) permission is required on all of the directories in <i>path</i> that lead to the file.
+<p><b>stat</b>() stats the file pointed to by <i>path</i> and fills in <i>buf</i>.
+<p><b>lstat</b>() is identical to <b>stat</b>(), except that if <i>path</i> is a symbolic link, then the link itself is stat-ed, not the file that it refers
+to.
+<p><b>fstat</b>() is identical to <b>stat</b>(), except that the file to be stat-ed is specified by the file descriptor <i>fd</i>.
+<p>All of these system calls return a <i>stat</i> structure, which contains the following fields:
+<dl compact>
+<dd>
+
+<pre class="code">struct stat {
+    dev_t     st_dev;     /* ID of device containing file */
+    ino_t     st_ino;     /* inode number */
+    mode_t    st_mode;    /* protection */
+    nlink_t   st_nlink;   /* number of hard links */
+    uid_t     st_uid;     /* user ID of owner */
+    gid_t     st_gid;     /* group ID of owner */
+    dev_t     st_rdev;    /* device ID (if special file) */
+    off_t     st_size;    /* total size, in bytes */
+    blksize_t st_blksize; /* blocksize for file system I/O */
+    blkcnt_t  st_blocks;  /* number of 512B blocks allocated */
+    time_t    st_atime;   /* time of last access */
+    time_t    st_mtime;   /* time of last modification */
+    time_t    st_ctime;   /* time of last status change */
+};</pre>
+<dt>The <i>st_dev</i> field describes the device on which this file resides. (The <b><a href="/man/3/major">major</a></b>(3) and <b><a href="/man/3/minor">minor</a></b>(3) macros may be useful to decompose the
+device ID in this field.)
+<p>The <i>st_rdev</i> field describes the device that this file (inode) represents.
+<p>The <i>st_size</i> field gives the size of the file (if it is a regular file or a symbolic link) in bytes. The size of a symbolic link is the length of the
+pathname it contains, without a terminating null byte.
+<p>The <i>st_blocks</i> field indicates the number of blocks allocated to the file, 512-byte units. (This may be smaller than <i>st_size</i>/512 when the file
+has holes.)
+<p>The <i>st_blksize</i> field gives the "preferred" blocksize for efficient file system I/O. (Writing to a file in smaller chunks may cause an inefficient
+read-modify-rewrite.)
+<p>Not all of the Linux file systems implement all of the time fields. Some file system types allow mounting in such a way that file and/or directory accesses
+do not cause an update of the <i>st_atime</i> field. (See <i>noatime</i>, <i>nodiratime</i>, and <i>relatime</i> in <b><a href="/man/8/mount">mount</a></b>(8), and related information in
+<b><a href="mount">mount</a></b>(2).) In addition, <i>st_atime</i> is not updated if a file is opened with the <b>O_NOATIME</b>; see <b><a href="open">open</a></b>(2).
+<p>The field <i>st_atime</i> is changed by file accesses, for example, by <b><a href="execve">execve</a></b>(2), <b><a href="mknod">mknod</a></b>(2), <b><a href="pipe">pipe</a></b>(2), <b><a href="utime">utime</a></b>(2) and <b><a href="read">read</a></b>(2)
+(of more than zero bytes). Other routines, like <b><a href="mmap">mmap</a></b>(2), may or may not update <i>st_atime</i>.
+<p>The field <i>st_mtime</i> is changed by file modifications, for example, by <b><a href="mknod" rel="nofollow">mknod</a></b>(2), <b><a href="truncate">truncate</a></b>(2), <b><a href="utime" rel="nofollow">utime</a></b>(2) and <b><a href="write">write</a></b>(2) (of
+more than zero bytes). Moreover, <i>st_mtime</i> of a directory is changed by the creation or deletion of files in that directory. The <i>st_mtime</i> field is
+<i>not</i> changed for changes in owner, group, hard link count, or mode.
+<p>The field <i>st_ctime</i> is changed by writing or by setting inode information (i.e., owner, group, link count, mode, etc.).
+<p>The following POSIX macros are defined to check the file type using the <i>st_mode</i> field:
+<dd><b>S_ISREG</b>(m)
+
+<p>is it a regular file?
+
+<p><b>S_ISDIR</b>(m)
+
+<p>directory?
+
+<p><b>S_ISCHR</b>(m)
+
+<p>character device?
+
+<p><b>S_ISBLK</b>(m)
+
+<p>block device?
+
+<p><b>S_ISFIFO</b>(m)
+
+<p>FIFO (named pipe)?
+
+<p><b>S_ISLNK</b>(m)
+
+<p>symbolic link? (Not in POSIX.1-1996.)
+
+<p><b>S_ISSOCK</b>(m)
+
+<p>socket? (Not in POSIX.1-1996.)
+<dt>The following flags are defined for the <i>st_mode</i> field:
+<dt>The set-group-ID bit (<b>S_ISGID</b>) has several special uses. For a directory it indicates that BSD semantics is to be used for that directory: files
+created there inherit their group ID from the directory, not from the effective group ID of the creating process, and directories created there will also get
+the <b>S_ISGID</b> bit set. For a file that does not have the group execution bit (<b>S_IXGRP</b>) set, the set-group-ID bit indicates mandatory file/record
+locking.
+<p>The sticky bit (<b>S_ISVTX</b>) on a directory means that a file in that directory can be renamed or deleted only by the owner of the file, by the owner of
+the directory, and by a privileged process.
+</dl>
+<h2>Return Value</h2>
+
+<p>On success, zero is returned. On error, -1 is returned, and <i>errno</i> is set appropriately.
+<h2>Errors</h2>
+<dl compact>
+<dt><b>EACCES</b>
+
+<p>Search permission is denied for one of the directories in the path prefix of <i>path</i>. (See also <b><a href="/man/7/path_resolution">path_resolution</a></b>(7).)
+
+<p><b>EBADF</b>
+
+<p><i>fd</i> is bad.
+
+<p><b>EFAULT</b>
+
+<p>Bad address.
+
+<p><b>ELOOP</b>
+
+<p>Too many symbolic links encountered while traversing the path.
+<dt><b>ENAMETOOLONG</b>
+<dd><i>path</i> is too long.
+<dt><b>ENOENT</b>
+
+<p>A component of <i>path</i> does not exist, or <i>path</i> is an empty string.
+
+<p><b>ENOMEM</b>
+
+<p>Out of memory (i.e., kernel memory).
+<dt><b>ENOTDIR</b>
+<dd>A component of the path prefix of <i>path</i> is not a directory.
+<dt><b>EOVERFLOW</b>
+<dd><i>path</i> or <i>fd</i> refers to a file whose size, inode number, or number of blocks cannot be represented in, respectively, the types <i>off_t</i>,
+<i>ino_t</i>, or <i>blkcnt_t</i>. This error can occur when, for example, an application compiled on a 32-bit platform without <i>-D_FILE_OFFSET_BITS=64</i>
+calls <b>stat</b>() on a file whose size exceeds <i>(1&lt;&lt;31)-1</i> bytes.
+</dl>
+<h2>Conforming To</h2>
+
+<p>These system calls conform to SVr4, 4.3BSD, POSIX.1-2001.
+<p>According to POSIX.1-2001, <b>lstat</b>() on a symbolic link need return valid information only in the <i>st_size</i> field and the file-type component of
+the <i>st_mode</i> field of the <i>stat</i> structure. POSIX.-2008 tightens the specification, requiring <b>lstat</b>() to return valid information in all
+fields except the permission bits in <i>st_mode</i>.
+<p>Use of the <i>st_blocks</i> and <i>st_blksize</i> fields may be less portable. (They were introduced in BSD. The interpretation differs between systems, and
+possibly on a single system when NFS mounts are involved.) If you need to obtain the definition of the <i>blkcnt_t</i> or <i>blksize_t</i> types from
+<i>&lt;<a href="/include/sys/stat.h" rel="nofollow">sys/stat.h</a>&gt;</i>, then define <b>_XOPEN_SOURCE</b> with the value 500 or greater (before including <i>any</i> header files).
+<p>POSIX.1-1990 did not describe the <b>S_IFMT</b>, <b>S_IFSOCK</b>, <b>S_IFLNK</b>, <b>S_IFREG</b>, <b>S_IFBLK</b>, <b>S_IFDIR</b>, <b>S_IFCHR</b>,
+<b>S_IFIFO</b>, <b>S_ISVTX</b> constants, but instead demanded the use of the macros <b>S_ISDIR</b>(), etc. The <b>S_IF*</b> constants are present in
+POSIX.1-2001 and later.
+<p>The <b>S_ISLNK</b>() and <b>S_ISSOCK</b>() macros are not in POSIX.1-1996, but both are present in POSIX.1-2001; the former is from SVID 4, the latter from
+SUSv2.
+<p>UNIX V7 (and later systems) had <b>S_IREAD</b>, <b>S_IWRITE</b>, <b>S_IEXEC</b>, where POSIX prescribes the synonyms <b>S_IRUSR</b>, <b>S_IWUSR</b>,
+<b>S_IXUSR</b>.
+
+<p><b>Other systems</b>
+<dl compact>
+<dt>Values that have been (or are) in use on various systems:
+<dt>A sticky command appeared in Version 32V AT&amp;T UNIX.
+<h2>Notes</h2>
+
+<p>Since kernel 2.5.48, the <i>stat</i> structure supports nanosecond resolution for the three file timestamp fields. Glibc exposes the nanosecond component of
+each field using names of the form <i>st_atim.tv_nsec</i> if the <b>_BSD_SOURCE</b> or <b>_SVID_SOURCE</b> feature test macro is defined. These fields are
+specified in POSIX.1-2008, and, starting with version 2.12, glibc also exposes these field names if <b>_POSIX_C_SOURCE</b> is defined with the value 200809L or
+greater, or <b>_XOPEN_SOURCE</b> is defined with the value 700 or greater. If none of the aforementioned macros are defined, then the nanosecond values are
+exposed with names of the form <i>st_atimensec</i>. On file systems that do not support subsecond timestamps, the nanosecond fields are returned with the value
+0.
+<p>On Linux, <b>lstat</b>() will generally not trigger automounter action, whereas <b>stat</b>() will (but see <b><a href="fstatat">fstatat</a></b>(2)).
+<p>For most files under the <i>/proc</i> directory, <b>stat</b>() does not return the file size in the <i>st_size</i> field; instead the field is returned with
+the value 0.
+</dl>
+
+<p><b>Underlying kernel interface</b>
+<dl compact>
+<dt>Over time, increases in the size of the <i>stat</i> structure have led to three successive versions of <b>stat</b>(): <i>sys_stat</i>() (slot
+<i>__NR_oldstat</i>), <i>sys_newstat</i>() (slot <i>__NR_stat</i>), and <i>sys_stat64()</i> (new in kernel 2.4; slot <i>__NR_stat64</i>). The glibc
+<b>stat</b>() wrapper function hides these details from applications, invoking the most recent version of the system call provided by the kernel, and repacking
+the returned information if required for old binaries. Similar remarks apply for <b>fstat</b>() and <b>lstat</b>().
+</dl>
+<h2>Example</h2>
+
+<p>The following program calls <b>stat</b>() and displays selected fields in the returned <i>stat</i> structure.
+<pre class="code">#include &lt;<a href="/include/sys/types.h" rel="nofollow">sys/types.h</a>&gt;
+#include &lt;<a href="/include/sys/stat.h" rel="nofollow">sys/stat.h</a>&gt;
+#include &lt;<a href="/include/time.h" rel="nofollow">time.h</a>&gt;
+#include &lt;<a href="/include/stdio.h" rel="nofollow">stdio.h</a>&gt;
+#include &lt;<a href="/include/stdlib.h" rel="nofollow">stdlib.h</a>&gt;
+
+int
+main(int argc, char *argv[])
+{
+    struct stat sb;
+
+   if (argc != 2) {
+        fprintf(stderr, "Usage: %s &lt;pathname&gt;\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+   if (stat(argv[1], &amp;sb) == -1) {
+        perror("stat");
+        exit(EXIT_FAILURE);
+    }
+
+   printf("File type:                ");
+
+   switch (sb.st_mode &amp; S_IFMT) {
+    case S_IFBLK:  printf("block device\n");            break;
+    case S_IFCHR:  printf("character device\n");        break;
+    case S_IFDIR:  printf("directory\n");               break;
+    case S_IFIFO:  printf("FIFO/pipe\n");               break;
+    case S_IFLNK:  printf("symlink\n");                 break;
+    case S_IFREG:  printf("regular file\n");            break;
+    case S_IFSOCK: printf("socket\n");                  break;
+    default:       printf("unknown?\n");                break;
+    }
+
+   printf("I-node number:            %ld\n", (long) sb.st_ino);
+
+   printf("Mode:                     %lo (octal)\n",
+            (unsigned long) sb.st_mode);
+
+   printf("Link count:               %ld\n", (long) sb.st_nlink);
+    printf("Ownership:                UID=%ld   GID=%ld\n",
+            (long) sb.st_uid, (long) sb.st_gid);
+
+   printf("Preferred I/O block size: %ld bytes\n",
+            (long) sb.st_blksize);
+    printf("File size:                %lld bytes\n",
+            (long long) sb.st_size);
+    printf("Blocks allocated:         %lld\n",
+            (long long) sb.st_blocks);
+
+   printf("Last status change:       %s", ctime(&amp;sb.st_ctime));
+    printf("Last file access:         %s", ctime(&amp;sb.st_atime));
+    printf("Last file modification:   %s", ctime(&amp;sb.st_mtime));
+
+   exit(EXIT_SUCCESS);
+}</pre>
+<h2>See Also</h2>
+
+<p><b><a href="access">access</a></b>(2), <b><a href="chmod">chmod</a></b>(2), <b><a href="chown">chown</a></b>(2), <b><a href="fstatat" rel="nofollow">fstatat</a></b>(2), <b><a href="readlink">readlink</a></b>(2), <b><a href="utime" rel="nofollow">utime</a></b>(2), <b><a href="/man/7/capabilities">capabilities</a></b>(7),
+<b><a href="/man/7/symlink">symlink</a></b>(7)
+
+<!-- google_ad_section_end -->
+<h2>Referenced By</h2>
+<b><a href="/man/5/acl" rel="nofollow">acl</a></b>(5),
+<b><a href="/man/5/amd.conf" rel="nofollow">amd.conf</a></b>(5),
+<b><a href="/man/5/attr" rel="nofollow">attr</a></b>(5),
+<b><a href="/man/5/collectd.conf" rel="nofollow">collectd.conf</a></b>(5),
+<b><a href="/man/1/csh" rel="nofollow">csh</a></b>(1),
+<b><a href="/man/3/dpns_readdirx" rel="nofollow">dpns_readdirx</a></b>(3),
+<b><a href="/man/8/dump" rel="nofollow">dump</a></b>(8),
+<b><a href="/man/1/dvips" rel="nofollow">dvips</a></b>(1),
+<b><a href="/man/3/euidaccess" rel="nofollow">euidaccess</a></b>(3),
+<b><a href="/man/3/ev" rel="nofollow">ev</a></b>(3),
+<b><a href="/man/1/explain" rel="nofollow">explain</a></b>(1),
+<b><a href="/man/3/explain" rel="nofollow">explain</a></b>(3),
+<b><a href="/man/3/explain_stat" rel="nofollow">explain_stat</a></b>(3),
+<b><a href="/man/3/explain_stat_or_die" rel="nofollow">explain_stat_or_die</a></b>(3),
+<b><a href="/man/1/fakeroot-tcp" rel="nofollow">fakeroot-tcp</a></b>(1),
+<b><a href="fallocate" rel="nofollow">fallocate</a></b>(2),
+<b><a href="/man/1/fastrm" rel="nofollow">fastrm</a></b>(1),
+<b><a href="/man/3/fcdircacheloadfile" rel="nofollow">fcdircacheloadfile</a></b>(3),
+<b><a href="/man/3/fgetln" rel="nofollow">fgetln</a></b>(3),
+<b><a href="/man/1/file" rel="nofollow">file</a></b>(1),
+<b><a href="/man/1/find" rel="nofollow">find</a></b>(1),
+<b><a href="fsync" rel="nofollow">fsync</a></b>(2),
+<b><a href="/man/3/ftok" rel="nofollow">ftok</a></b>(3),
+<b><a href="/man/3/fts" rel="nofollow">fts</a></b>(3),
+<b><a href="/man/3/ftw" rel="nofollow">ftw</a></b>(3),
+<b><a href="futimesat" rel="nofollow">futimesat</a></b>(2),
+<b><a href="/man/3/getfilecon" rel="nofollow">getfilecon</a></b>(3),
+<b><a href="/man/3/getseuserbyname" rel="nofollow">getseuserbyname</a></b>(3),
+<b><a href="getxattr" rel="nofollow">getxattr</a></b>(2),
+<b><a href="/man/3/glob" rel="nofollow">glob</a></b>(3),
+<b><a href="/man/1/guestfish" rel="nofollow">guestfish</a></b>(1),
+<b><a href="/man/3/guestfs" rel="nofollow">guestfs</a></b>(3),
+<b><a href="/man/7/inotify" rel="nofollow">inotify</a></b>(7),
+<b><a href="lam_rfposix" rel="nofollow">lam_rfposix</a></b>(2),
+<b><a href="/man/3/lfc_readdirxc" rel="nofollow">lfc_readdirxc</a></b>(3),
+<b><a href="/man/3/libinn" rel="nofollow">libinn</a></b>(3),
+<b><a href="/man/3/libinnhist" rel="nofollow">libinnhist</a></b>(3),
+<b><a href="/man/3/librrd" rel="nofollow">librrd</a></b>(3),
+<b><a href="/man/3/libssh2_sftp_stat_ex" rel="nofollow">libssh2_sftp_stat_ex</a></b>(3),
+<b><a href="link" rel="nofollow">link</a></b>(2),
+<b><a href="listxattr" rel="nofollow">listxattr</a></b>(2),
+<b><a href="/man/1/llvm-ar" rel="nofollow">llvm-ar</a></b>(1),
+<b><a href="/man/8/lslk" rel="nofollow">lslk</a></b>(8),
+<b><a href="/man/8/lsof" rel="nofollow">lsof</a></b>(8),
+<b><a href="/man/3/makedev" rel="nofollow">makedev</a></b>(3),
+<b><a href="/man/1/mgp" rel="nofollow">mgp</a></b>(1),
+<b><a href="/man/1/mirrordir" rel="nofollow">mirrordir</a></b>(1),
+<b><a href="mkdir" rel="nofollow">mkdir</a></b>(2),
+<b><a href="/man/3/mkfifo" rel="nofollow">mkfifo</a></b>(3),
+<b><a href="/man/8/mtree" rel="nofollow">mtree</a></b>(8),
+<b><a href="/man/5/muttrc" rel="nofollow">muttrc</a></b>(5),
+<b><a href="/man/8/nfslogsum" rel="nofollow">nfslogsum</a></b>(8),
+<b><a href="/man/8/nhfsstone" rel="nofollow">nhfsstone</a></b>(8),
+<b><a href="obsolete" rel="nofollow">obsolete</a></b>(2),
+<b><a href="path_resolution" rel="nofollow">path_resolution</a></b>(2),
+<b><a href="/man/1/pax" rel="nofollow">pax</a></b>(1),
+<b><a href="/man/1/perl561delta" rel="nofollow">perl561delta</a></b>(1),
+<b><a href="/man/1/perl56delta" rel="nofollow">perl56delta</a></b>(1),
+<b><a href="/man/1/perlfunc" rel="nofollow">perlfunc</a></b>(1),
+<b><a href="/man/7/pipe" rel="nofollow">pipe</a></b>(7),
+<b><a href="pivot_root" rel="nofollow">pivot_root</a></b>(2),
+<b><a href="/man/5/proc" rel="nofollow">proc</a></b>(5),
+<b><a href="/man/1/rdist" rel="nofollow">rdist</a></b>(1),
+<b><a href="/man/1/rdup" rel="nofollow">rdup</a></b>(1),
+<b><a href="/man/8/rdup" rel="nofollow">rdup</a></b>(8),
+<b><a href="/man/3/readline" rel="nofollow">readline</a></b>(3),
+<b><a href="removexattr" rel="nofollow">removexattr</a></b>(2),
+<b><a href="/man/1/samefile" rel="nofollow">samefile</a></b>(1),
+<b><a href="/man/1/sec" rel="nofollow">sec</a></b>(1),
+<b><a href="/man/3/setfilecon" rel="nofollow">setfilecon</a></b>(3),
+<b><a href="/man/3/setmode" rel="nofollow">setmode</a></b>(3),
+<b><a href="setxattr" rel="nofollow">setxattr</a></b>(2),
+<b><a href="/man/1/sh" rel="nofollow">sh</a></b>(1),
+<b><a href="/man/1/spax" rel="nofollow">spax</a></b>(1),
+<b><a href="spu_create" rel="nofollow">spu_create</a></b>(2),
+<b><a href="spufs" rel="nofollow">spufs</a></b>(2),
+<b><a href="/man/7/spufs" rel="nofollow">spufs</a></b>(7),
+<b><a href="/man/1/star" rel="nofollow">star</a></b>(1),
+<b><a href="/man/1/stat" rel="nofollow">stat</a></b>(1),
+<b><a href="statfs" rel="nofollow">statfs</a></b>(2),
+<b><a href="/man/3/strmode" rel="nofollow">strmode</a></b>(3),
+<b><a href="/man/8/sudo" rel="nofollow">sudo</a></b>(8),
+<b><a href="syscalls" rel="nofollow">syscalls</a></b>(2),
+<b><a href="/man/7/time" rel="nofollow">time</a></b>(7),
+<b><a href="umask" rel="nofollow">umask</a></b>(2),
+<b><a href="ustat" rel="nofollow">ustat</a></b>(2),
+<b><a href="utimensat" rel="nofollow">utimensat</a></b>(2),
+<b><a href="/man/8/watchdog" rel="nofollow">watchdog</a></b>(8),
+<b><a href="/man/1/xbiff" rel="nofollow">xbiff</a></b>(1),
+<b><a href="/man/1/xdvi" rel="nofollow">xdvi</a></b>(1),
+<b><a href="/man/8/xfs_db" rel="nofollow">xfs_db</a></b>(8),
+<b><a href="/man/8/xfs_io" rel="nofollow">xfs_io</a></b>(8),
+<b><a href="/man/8/zfs" rel="nofollow">zfs</a></b>(8),
+<b><a href="/man/1/zshmodules" rel="nofollow">zshmodules</a></b>(1)
+<div id=adbottom>
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<ins class="adsbygoogle"
+     style="display:inline-block;width:336px;height:280px"
+     data-ad-client="ca-pub-5823754184406795"
+     data-ad-slot="8789940313"></ins>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({});
+</script>
+</div>
+
+</div>
+<div id=menu>
+<dl>
+<dt>Site Search</dt>
+<dd>
+<form id="cse-search-box-menu" action="http://www.google.com/cse">
+<input name="q" type="text" size="10">
+<input type="hidden" name="sa" value="Search">
+<input type="hidden" name="ie" value="ISO-8859-1">
+<input type="hidden" name="cx" value="partner-pub-5823754184406795:54htp1rtx5u">
+<input type="hidden" name="cof" value="FORID:9">
+</form>
+<script type="text/javascript">
+<!--
+document.forms["cse-search-box-menu"].action = "http://www.die.net/search/";
+// -->
+</script>
+</dd></dl>
+
+
+
+<dl>
+<dt>Library</dt>
+<dd><a href="http://linux.die.net/">linux docs</a></dd>
+<dd><a href="http://linux.die.net/man/">linux man pages</a></dd>
+<dd><a href="http://www.die.net/musings/page_load_time/">page load time</a></dd>
+</dl>
+<dl>
+<dt>Toys</dt>
+<dd><a href="http://www.die.net/earth/">world sunlight</a></dd>
+<dd><a href="http://www.die.net/moon/">moon phase</a></dd>
+<dd><a href="http://trace.die.net/">trace explorer</a></dd>
+</dl>
+
+
+<dl>
+<dt><a href="/man/2/"><img src="/style/back.gif" alt="Back"
+width=20 height=22></a></dt><dd></dd>
+</dl>
+</div></div>
+<script type="text/javascript">
+<!--
+if (top.location != self.location) top.location = self.location;
+if (/[?&][pq]=/.test(document.referrer)) document.write(unescape("%3Cscript src='/style/highlight.js' type='text/javascript'%3E%3C/script%3E"));
+function googleTranslateElementInit() {new google.translate.TranslateElement({pageLanguage: 'en', floatPosition: google.translate.TranslateElement.FloatPosition.TOP_RIGHT, gaTrack: true, gaId: 'UA-50820-6'});}
+if (!/^en/i.test(window.navigator.userLanguage||window.navigator.language)) document.write(unescape("%3Cscript src='//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit' type='text/javascript'%3E%3C/script%3E"));
+(function() {
+var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+// -->
+</script>
+</body>
+</html>

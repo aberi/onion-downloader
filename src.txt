@@ -1,0 +1,1561 @@
+
+#include "file.h"
+#include "utils.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <dirent.h>
+
+typedef unsigned int uint32_t;
+
+exist_t
+directory_exists (char *dirname)
+{
+	struct stat st;
+	if (stat (dirname, &st) != -1)
+	{
+		return ((st.st_mode & S_IFMT) == S_IFDIR) ? DIR_EXISTS : FILE_EXISTS;
+	}
+	return NO_EXIST;
+}
+
+int 
+create_file (char *filename)
+{
+	return 0;	
+}
+
+char *
+strip_tail_from_path (char *path)
+{
+	char *cur, *prev, *ret;
+	cur = strchr (path, '/'); prev = path;
+	
+	while (cur)
+	{	
+		prev = cur;	
+		cur = strchr (cur + 1, '/');
+	}
+	
+	ret = calloc (1, prev - path + 1);
+	strncpy (ret, path, prev - path);
+	ret[prev - path] = 0;	
+
+	return ret;
+}
+
+exist_t
+make_dirs (char *filename)
+{
+	char *cur;
+	char *buf;
+	char *local_filename = strdup (filename);
+	int length;
+	exist_t ret;
+
+	if ((ret = directory_exists (local_filename)) != NO_EXIST)
+	{
+		/*if (ret == DIR_EXISTS)
+			fprintf (stderr, "Found directory %s\n", local_filename);
+		else
+			fprintf (stderr, "Found file %s\n", local_filename); */
+		return ret;	
+	}
+	
+	length = strlen (local_filename); 
+	
+	if (length > 0 && local_filename[length - 1] == '/')
+		local_filename[length - 1] = '\0';
+	else
+		local_filename = strip_tail_from_path (local_filename);
+
+	cur = local_filename;
+	
+	buf = calloc (1, length + 1);
+
+	while ((cur = strchr (cur + 1, '/')))
+	{
+		memset (buf, 0, sizeof (buf));	
+		strncpy (buf, local_filename, cur - local_filename);
+	
+		/* fprintf (stderr, "Trying to create %s\n", buf); */
+
+		if (mkdir (buf, 0755) < 0)
+			if (errno != EEXIST) /* Don't exit just because some of the prequisites already exist */
+				return NO_EXIST;
+	}
+	
+	/* All the prerequisites now exist, so create the original directory name that was passed */
+	/*fprintf (stderr, "Trying to create %s\n", local_filename); */
+	if (mkdir (local_filename, 0755) < 0)
+		return NO_EXIST;				
+	
+	return DIR_EXISTS;
+}
+#include "hash.h"
+#include "utils.h"
+#include "url.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+void 
+hash_table_print (const struct hash_table *table)
+{
+	char **k = keys (table);	
+	
+	while (*k)
+	{
+		char *v = hash_table_get (table, *k);
+		printf ("%s --> %s\n", *k, v);	
+		k++;
+	}
+}
+
+unsigned long
+hash (char *key)
+{
+	int i;
+	unsigned long ret = 0;
+	size_t len = strlen (key);
+	
+	for (i = 0; i < len; i++)
+	{
+		ret = ret * 31 + key[i];		
+	}
+		
+	return ret;
+}
+
+pair *
+pair_new (void)
+{
+	return xnew (pair);
+}
+
+pair *
+init_pair (char *key, char *value)
+{
+	pair *p = pair_new();
+	if (!p)
+		return NULL;
+	p->key = strdup (key);
+	p->value = strdup (value);
+	
+	return p;
+}
+
+char **
+keys (const struct hash_table *table)
+{
+	int i, n_occupied = 0, n_inserted = 0;
+	char **list_of_keys;
+	for (i = 0; i < table->size; i++)
+	{	
+		if (table->table[i].state == OCCUPIED)
+			n_occupied++;
+	}	
+	
+	list_of_keys = malloc (sizeof (char *) * n_occupied + 1);
+	for (i = 0; i < table->size; i++)
+	{	
+		if (table->table[i].state == OCCUPIED)
+			list_of_keys[n_inserted++] = strdup (table->table[i].key);
+	}		
+
+	list_of_keys[n_inserted] = NULL;
+	return list_of_keys;
+}
+
+struct hash_table *
+hash_table_new (size_t size)
+{
+	int i;
+	struct hash_table *table = calloc (1, sizeof (struct hash_table));
+		
+	table->size = size;
+	table->table = malloc (sizeof (pair) * size);
+	
+	for (i = 0; i < size; i++)
+		table->table[i].state = EMPTY;
+
+	if (!table->table)
+		return NULL;
+	table->count = 0;
+		
+	return table;
+}
+
+char *
+hash_table_get (const struct hash_table *table, char *key)
+{
+	unsigned long hash_code = hash (key) % table->size;
+	unsigned long index = hash_code;
+
+	do 
+	{
+		pair current = table->table[index];
+		switch (current.state)
+			{
+			case EMPTY:
+				return NULL;
+				break;
+			case DELETED:
+				if (strcmp (current.key, key) == 0) /* The key is present, but the value has been deleted */
+					return NULL;
+				break;
+			case OCCUPIED:
+				if (strcmp (current.key, key) == 0)
+					return current.value;
+				break;
+		}
+		index = (index + 1) % table->size;
+	}
+	while (index != hash_code);
+	
+	return NULL;
+}
+
+struct hash_table *
+hash_table_copy (struct hash_table *rhs)
+{
+	int i;
+	struct hash_table *ret = hash_table_new (rhs->size);
+	
+	for (i = 0; i < rhs->size; i++)
+	{
+		ret->table[i].key = xstrdup (rhs->table[i].key);	
+		ret->table[i].value = xstrdup (rhs->table[i].value);	
+		ret->table[i].state = rhs->table[i].state;
+	}
+	
+	ret->count = rhs->count;
+	ret->size = rhs->size;
+	
+	return ret;
+}
+
+/* Really clean code. Nice job */
+int 
+hash_table_put (struct hash_table *table, char *key, char *value)
+{
+	unsigned long hash_code = hash (key) % table->size;
+	unsigned long index = hash_code;
+
+	do 
+	{
+		pair *list = table->table;
+		switch (list[index].state)
+			{
+			case EMPTY:
+			case DELETED: 
+				list[index].key = strdup (key);
+				list[index].value = strdup (value);
+				list[index].state = OCCUPIED;
+				table->count++;
+				return 0;
+				break;
+			case OCCUPIED:
+				if (strcmp (key, list[index].key) == 0)
+				{
+					free (list[index].value);
+					list[index].value = strdup (value);
+					return 0;
+				}
+				else
+					index = (index + 1) % table->size;
+				break;
+		}
+	}
+	while (index != hash_code);
+
+	/* Hash table is full */
+	
+	return 0;
+}
+
+char *hash_table_remove (struct hash_table *table, char *key)
+{
+	unsigned long hash_code = hash (key) % table->size;
+	unsigned long index = hash_code;
+	pair *list = table->table;
+	
+	do 
+	{
+		switch (list[index].state)
+		{	
+			case EMPTY: /* Key not in hash table */
+				return NULL;
+				break;
+			case DELETED:
+				if (strcmp (key, list[index].key) == 0) /* Key found, but the entry has been deleted */
+					return NULL;	
+				/* Otherwise, if we haven't found the key yet, keep trying */
+				break;
+			case OCCUPIED:
+				if (strcmp (key, list[index].key) == 0)
+				{	
+					char *value = strdup (list[index].value);
+					free (list[index].value);
+					list[index].value = NULL;
+					list[index].state = DELETED;
+	
+					table->count--;
+					return value;
+				}
+				break;
+		}
+	
+		index = (index + 1) % table->size;
+	}
+	while (index != hash_code);
+
+	/* Key not in hash table, every entry is DELETED or OCCUPIED */
+
+	return NULL;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sysexits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <assert.h>
+
+#include "hash.h"
+#include "opt.h"
+#include "url.h"
+#include "utils.h"
+#include "types.h"
+#include "request.h"
+#include "file.h"
+#include "parse.h"
+
+#define IPV4_ADDR_LEN 4
+#define MAX_REDIRECT 5
+#define HTTP_PORT 80
+
+static char *optstring = "Rm:o:Op:r";
+
+struct opt options;
+
+/* Make an argument processing function to begin with.
+ * Use the global options variable */
+
+void usage(void);
+
+static struct option longopts[] = 
+{{"show-response", no_argument,       NULL, 'R'}, 
+ {"output-file",   required_argument, NULL, 'o'}};
+
+void
+init_opt (int argc, char **argv, char *opts)
+{
+	int opt;
+	options.url = strdup (argv[1]);
+	options.recursive = 0;
+	options.output_fd = -1;
+	options.show_server_response = 0;
+	
+	#ifdef DEBUG
+	fprintf (stderr, "URL to be parsed: %s\n", options.url);	
+	#endif
+
+	optind++;	
+	while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1)
+	{
+		switch (opt)
+		{
+			case 'O':
+				options.print_content = 1;
+				break;
+			case 'o':
+				options.output_file = strdup (optarg);
+				if ((options.output_fd = open (options.output_file, O_WRONLY | O_TRUNC | O_CREAT, 0666)) < 0)
+				{	
+						perror ("Output file name not valid... Will attempt to save to a file based on the \
+									path of the URL.");	
+				}	
+				break;	
+			case 'p':
+				break;
+			case 'r':
+				options.recursive = 1;
+				break;
+			case 'R':
+				options.show_server_response = 1;
+				break;
+			case 'm':
+				options.method = strdup (optarg);
+				break;
+			default:
+				usage();
+				break;
+		}	
+	}
+}
+
+int
+create_and_bind_tcp_socket (struct sockaddr_in *addr) 
+{
+	int sock;
+	if ((sock = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) 
+	{
+		perror ("Couldn't create socket locally");
+		exit (1);	
+	}
+	
+	addr->sin_addr.s_addr = htonl (INADDR_ANY);
+	addr->sin_family = AF_INET; /* TODO: implement IPv6 */
+	addr->sin_port = htons (0);
+	
+	if (bind (sock, (struct sockaddr *) addr, sizeof (struct sockaddr_in)) < 0) 
+	{
+		perror ("Couldn't bind socket to local machine");
+		exit (1);
+	}
+	
+	return sock;
+}
+
+int
+resolve_host (const char *hostname, struct sockaddr_in *addr, int port) 
+{
+	struct hostent *host;
+	unsigned char *ad;
+	fprintf (stderr, "Trying to resolve %s...\n", hostname);
+
+	if ((host = gethostbyname (hostname)) == NULL || host->h_length != IPV4_ADDR_LEN || host->h_addr == NULL 
+		|| host->h_addrtype != AF_INET) 
+	{
+		perror ("Couldn't resolve host");
+		exit (1);
+	}
+	
+	ad = (unsigned char *) host->h_addr;
+	fprintf (stderr, "Success, resolved %s to address %d.%d.%d.%d\n", hostname, ad[0], ad[1], ad[2], ad[3]);
+
+	addr->sin_family = AF_INET;
+	memcpy ((void*) &addr->sin_addr.s_addr, host->h_addr, host->h_length); 
+	
+	addr->sin_port = htons (port);
+	
+	return 0;
+}
+
+int
+connect_to_ip (int sock, struct sockaddr_in *addr)
+{
+	if (addr->sin_family != AF_INET)
+		return -1;
+	if (addr->sin_port == htons (0)) /* a 0 here indicates that any port can be selected. We'll use HTTP as our default */
+		addr->sin_port = htons (HTTP_PORT); /* Use HTTP as default protocol */
+	return connect (sock, (struct sockaddr *) addr, sizeof (struct sockaddr_in));
+}
+
+void
+usage (void)
+{
+	fprintf (stderr, "Usage: client <url> [-o output file] [-r] [-m http method]\n");
+	exit (1);
+}
+
+
+char *names[] = {"Host", "User-Agent", "Connection", NULL};
+char *values[] = {"www.google.com", "Wget-1.16 (linux-gnu)", "Keep-Alive", NULL};
+
+struct hash_table *
+fill_header_table (char **names, char **values)
+{
+	struct hash_table *headers = hash_table_new (31);	
+	while (*names)
+	{
+		hash_table_put (headers, *names++, *values++);	
+	}
+		
+	return headers;
+}
+
+void
+create_output_file (char *url_path)
+{
+	char *path = strdup (url_path + 1); /* It must always be the case that URL paths within the url_t struct 
+												begin with a '/', otherwise this will cause serious problems! */
+
+	if (strlen(path) && path[strlen (path) - 1] == '/') /* Assume we are doing file creation! If the request is
+											to a "directory" of a webpage, treat it like a 
+											regular webpage by default  */
+		path[strlen (path) - 1] = '\0';
+
+	#ifdef DEBUG
+	fprintf (stderr, "Writing to %s\n", path);
+	#endif
+
+	if (make_dirs (path) != DIR_EXISTS)
+		fprintf (stderr, "The directories necessary to create the file in the location given by %s do not exist.\n", path);
+		/* It's definitely possible (likely) that we are just going to use index.html as the filename if this
+ 		 * has happened. */
+	if (strlen (path) == 0 || (options.output_fd = open (path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+	{
+		if ((options.output_fd = open ("index.html", O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+			options.output_fd = STDOUT_FILENO;
+		else
+			options.output_file = strdup ("index.html");	
+	}
+	else
+		options.output_file = strdup (path);
+	free (path);	
+}
+
+int 
+main(int argc, char *argv[])
+{
+	char *method = "GET";
+	char *response_body;
+	char buf[BUFSIZ];
+	int sock, num_redirect = 0; /* Socket that is connected to the host and the number of redirections (3xx codes)
+									that have taken place during the current attempt to download a webpage */
+	url_t u;
+
+	struct sockaddr_in client, server; /* Addresses of the local and remote host */
+	struct request *req; /* Request to be sent to remote host. Currently must be an HTTP request */  
+	struct response *resp = malloc (sizeof (struct response)); /* Response given by remote host */
+	struct content *response_content; /* File that would be displayed on a web browser. */
+	struct hash_table *headers; 
+	resp->status = -1; /* Indicate that the server has not responded yet */
+
+	if (argc < 2)
+		usage ();
+
+	init_opt (argc, argv, optstring);
+	parse_url (options.url, &u);
+
+	if (options.output_fd < 0)
+	/* Write to a file based on the path of the URL. If the path is "/", use index.html by default */
+		create_output_file (u.path);
+
+	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
+	{
+		sock = create_and_bind_tcp_socket (&client);
+		resolve_host (u.host, &server, HTTP_PORT);
+	
+		if (connect_to_ip (sock, &server) < 0)
+		{
+			perror ("Unable to connect to the server");
+			exit (1);	
+		}
+
+		headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
+		hash_table_put (headers, "Host", u.host);		
+
+		/* Always create requests from a struct hash_table. Don't use a pair of char **; we can't
+ 			easily insert and remove from a pair of char ** like we can with a struct hash_table */
+		req = make_request (&u, headers, method);
+		send_request (sock, req);
+
+		/* I have written read_response so that it will write to the output file immediately after each
+ 			read call that reads actual content (headers will not be written to the output file). That
+			means we don't have to worry about the output file after this has been handled. In the case
+			of a redirection, the new file will overwrite the old one. TODO: Handle the case where
+			server returns status 4xx.  */
+		response_content = read_response (sock, buf, sizeof (buf));
+		response_body = response_content->body;
+
+		/* Compile the response headers into a hash table and get the status (server response code) */	
+		parse_response (response_content, resp);
+
+		/* Good for debugging purposes */
+		if (options.show_server_response)
+			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
+
+		/* Good for debugging purposes */
+		if (options.print_content && options.output_fd != STDOUT_FILENO)
+			write (STDOUT_FILENO, response_body, response_content->len);  /* Don't do this, just write the content
+																			to the file during parsing */
+
+		switch (resp->status)
+		{
+			char *location, *fmt;
+			case HTTP_OK:
+				return 0; /* Output file is written, nothing else to do (but once we
+								implement recursive downloading, this will change. We
+								will need to decide if we want to recurse, get the 
+								links from the output file by parsing it, and visit
+								every appropriate link. Don't worry about things
+								like persistent connections just yet, but they
+								will become essential later. You don't want to
+								have to reconnect to the same host 1000 times 
+								when trying to mirror a site. You also want
+								to be able to use cookies. */
+			case HTTP_MOVED:
+			case HTTP_FOUND:
+				if ((location = hash_table_get (resp->headers, "Location")))
+				{	
+					#ifdef DEBUG
+					fprintf (stderr, "New location is %s\n", location); 
+					#endif
+					parse_url (location, &u);	
+					/* print_url (&u); */
+					create_output_file (u.path); /* Truncate the previous file... we don't want
+					"301 Moved Permanently" showing up at the top of the file */
+					num_redirect++;
+				}
+				else
+					return 1;
+				break;
+			case HTTP_NOT_FOUND: /* Could rm the output file */
+				fmt = "rm %s";
+				memset (buf, 0, sizeof (buf));
+				sprintf (buf, fmt, options.output_file);
+				#ifdef DEBUG
+				fprintf (stderr, "Calling \"%s\"\n", buf);
+				#endif
+				system (buf);
+				return 1;
+				break;
+			default:
+				return 1;
+				break;
+		}
+	}
+
+	return 0;
+}
+#include "parse.h"
+#include "hash.h"
+#include "utils.h"
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define TAG_START_FMT "<%s"
+#define TAG_END_FMT "</%s>"
+
+char *
+tag_start (char *tag_name)
+{
+	/* 							"<%s"					 tag_name     '\0', subtract format string */
+	char *ret = malloc (strlen (TAG_START_FMT) + strlen (tag_name) + 1 - 2);
+	
+	sprintf (ret, "<%s", tag_name);
+	return ret;
+}
+
+char *
+tag_end (char *tag_name)
+{
+	char *ret = malloc (strlen (TAG_START_FMT) + strlen (TAG_END_FMT) + 1 - 2);
+	
+	sprintf (ret, "</%s>", tag_name);
+	return ret;
+}
+
+int arr_size (char **arr)
+{
+	int c = 0;
+	while (*arr++)
+		c++;
+	return c;
+}
+
+char *
+build_html_tag (char *name, struct hash_table *table, char *content)
+{
+	char *tag, *p;
+	char *start = tag_start (name), *end = tag_end (name);
+	char **attr_names = keys (table);
+	char **temp;
+	int size = 0;
+
+	size += strlen (start);
+	
+	temp = attr_names;	
+	while (*attr_names)
+	{
+		char *value = hash_table_get (table, *attr_names);
+		/* " href=\"http://link.org/\" " will be added on if the attribute
+ 			href has the value http://link.org/ */
+		size += 1 + strlen (*attr_names) + 1 + 1 + strlen (value) + 1 + 1;
+		attr_names++;
+	}
+	attr_names = temp;
+	/* ">" but we have one extra space, so delete that space and replace it with ">". 
+ 		This is why the following line is commented out */
+	/* size += 1; */
+	size += strlen (content);
+	size += strlen (end);
+	
+	tag = malloc (size + 1);	
+
+	p = tag;	
+	APPEND(p, start, strlen (start));
+	while (*attr_names)
+	{
+		char *value = hash_table_get (table, *attr_names);
+		APPEND(p, " ", 1); 
+		APPEND(p, *attr_names, strlen (*attr_names)); 
+		APPEND(p, "=\"", 2);
+		APPEND(p, value, strlen (value));
+		APPEND(p, "\"", 1);
+		attr_names++;
+	}
+	
+	APPEND(p, ">", 1);
+	APPEND(p, content, strlen (content));
+	APPEND(p, end, strlen (end));
+
+	return tag;	
+}
+
+char *
+end_quote (char *text)
+{
+	char *cur = text;
+	while ((cur = strchr (cur + 1, '"')))
+		if (cur[-1] != '\\') /* I'm not sure if this what it would look like in the actual hypertext */
+			return cur;	
+	
+	return NULL;
+}
+
+#define CURRENT(start, end) printf ("Start=%s\nEnd=%s\n", start, end)
+
+struct html_tag *
+parse_tag (char *tag)
+{
+	char buf[BUFSIZ];
+	struct html_tag *ret = calloc (1, sizeof (struct html_tag));
+	struct hash_table *attributes = hash_table_new (31);
+	char *name;
+	char *content;
+	char *end;
+	char *ws;
+	int has_attributes;
+	char *start = strchr (tag, '<');
+
+	if (start == NULL)
+		return NULL;
+
+	end = strchr (start, '>');	
+	ws = strchr (start, ' ');
+	if (ws < end)
+	{
+		char *temp = ws;
+		SKIP_WS(temp);
+		if (*temp != '>')
+			has_attributes = 1;
+	
+		end = ws; /* The end of the name will be at the beginning of the whitespace */
+	}
+	
+	/* Otherwise, there must be no attributes and the name will end where the character '>'
+ 		is found */
+
+	memset (buf, 0, sizeof (buf));
+	strncpy (buf, start + 1, end - start - 1);
+	name = strdup (buf);
+	ret->name = name;
+
+	while (has_attributes) /* attributes should begin after the end of the name */
+	{
+		char *attr_name, *attr_value;
+		SKIP_WS(end);
+		start = end;
+		end = strchr (end, '=');
+		if (!end) goto err;
+		
+		/* Get the name value */
+		attr_name = malloc (end - start + 1);
+		strncpy (attr_name, start, end - start);
+		/* Out of paranoia */
+		attr_name[end - start] = '\0';
+
+		end++; /* Skip the '=' */
+	
+		if (*end++ != '"') goto err;
+	
+		start = end;
+		end = end_quote (end);
+
+		attr_value = malloc (end - start + 1);	
+		strncpy (attr_value, start, end - start);
+		buf[end - start] = '\0';
+
+		hash_table_put (attributes, attr_name, attr_value);
+	
+		free (attr_name);
+		free (attr_value);
+	
+		if (*++end == '>')
+			break;
+			
+		/* We have to find the end of the name-value pair by finding the second double quotation mark.
+ 			From there we can see whether there is whitespace left before the content begins or if
+			there are no attributes left to parse */	
+		
+	}
+
+	/* Start small by assuming that no HTML tags are within the content body. This will clearly
+ 	 * not hold in practice */
+	ret->attributes = attributes;
+		
+	start = end + 1;
+	if (!(*start)) goto err;	
+	else if (*start == '<')
+	{
+		ret->content = strdup ("");
+		end = start;
+	}
+	else
+	{	
+		end = strchr (start, '<');
+		if (!end) goto err;
+	
+		content = malloc (end - start + 1);
+		strncpy (content, start, end - start);
+		content[end - start] = '\0';
+	
+		ret->content = content;
+	}	
+
+	end++;
+	if (*end++ != '/' || strncmp (end, name, strlen (name)) != 0 || end[strlen (name)] != '>') goto err;
+	
+	ret->children = NULL;	
+	return ret;
+
+	err:
+		fprintf (stderr, "Doesn't look like an HTML tag!\n");
+		return NULL;
+}
+
+void
+print_tag (const struct html_tag *tag)
+{
+	if (tag)
+	{
+		printf ("Name: \"%s\"\n", tag->name);
+		hash_table_print (tag->attributes);
+		printf ("Content: \"%s\"\n", tag->content);
+	}
+}
+
+struct html_tag *
+get_tags_by_name (char *name)
+{
+	return NULL;
+}
+
+struct html_tag *
+get_next_tag (char *file_content, char *tag_name) 
+{
+	return NULL;	
+}
+#include "types.h"
+#include "utils.h"
+#include "url.h"
+#include "hash.h"
+#include "request.h"
+#include "opt.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#define HT_SIZE 31 /* sufficiently large prime */
+
+#define APPEND(p, str, len) strncpy (p, str, len); \
+							p += len
+
+struct opt options;  /* global options variable */
+
+struct request *
+make_request (url_t *url, struct hash_table *table, char *method)
+{
+	char *ptr;
+	struct request *req = malloc (sizeof (struct request));
+	
+	int content_len = 0;
+	int i;
+
+	req->position = 0;
+	req->url = url;
+	req->method = strdup (method);
+	req->http_version = strdup ("HTTP/1.0");
+	req->headers = hash_table_copy (table);
+
+	content_len += strlen (method) + 1 + strlen (url->path) + 1 + strlen (req->http_version) + 2;	
+
+	for (i = 0; i < table->size; i++)
+	{
+		if (table->table[i].state == OCCUPIED)
+		{
+			char *key = table->table[i].key;
+			char *value = hash_table_get (table, key);
+
+			content_len += strlen (key) + 2 + strlen (value) + 2;
+		}	
+	}
+
+	content_len += 2; /* Final \r\n */
+	
+	req->content = malloc (content_len + 1);
+	if (!req->content)
+		return NULL;
+
+	req->content_len = content_len;
+	ptr = req->content;
+
+	APPEND(ptr, method, strlen (method)); *ptr++ = ' ';
+	APPEND(ptr, url->path, strlen (url->path)); *ptr++ = ' ';
+	APPEND(ptr, req->http_version, strlen (req->http_version));
+	APPEND(ptr, "\r\n", 2);
+
+	for (i = 0; i < table->size; i++)
+	{
+		if (table->table[i].state == OCCUPIED)
+		{
+			char *key = table->table[i].key;
+			char *value = hash_table_get (table, key);	
+
+			APPEND(ptr, key, strlen (key)); APPEND(ptr, ": ", 2);
+			APPEND(ptr, value, strlen (value)); APPEND(ptr, "\r\n", 2);
+		}
+	}
+
+	APPEND(ptr, "\r\n", 2);
+
+		
+	return req;
+	
+}
+
+struct request *
+create_request (url_t *url, char **names, char **values, char *method)
+{
+	char **names_temp, **values_temp;
+	char *ptr; /* Pointer to current position in the request content */
+	struct request *req = malloc (sizeof (struct request));	
+	struct hash_table *table;
+	int content_len = 0;
+	int i;
+
+	req->position = 0;
+	req->url = url;
+	req->method = strdup (method);
+	req->http_version = strdup ("HTTP/1.0");
+
+	/* Create a hash table based on the names and values given */	
+
+	req->headers = hash_table_new (HT_SIZE);
+
+	names_temp = names;
+	values_temp = values;
+
+	if (names && values)
+	{
+		do
+		{
+			hash_table_put (req->headers, *names_temp, *values_temp);
+			values_temp++;
+			names_temp++;
+		}
+		while (*names_temp); /* Assume the two arrays are of the same length. We want some errors to occur if they
+						 	* exist rather than pretend as if they aren't there */
+	}
+
+	content_len += strlen (method) + 1 + strlen (url->path) + 1 + strlen (req->http_version) + 2;	
+
+	table = req->headers;
+
+	for (i = 0; i < table->size; i++)
+	{
+		if (table->table[i].state == OCCUPIED)
+		{
+			char *key = table->table[i].key;
+			char *value = hash_table_get (table, key);
+
+			content_len += strlen (key) + 2 + strlen (value) + 2;
+		}	
+	}
+
+	content_len += 2; /* Final \r\n */
+	
+	req->content = malloc (content_len + 1);
+	if (!req->content)
+		return NULL;
+
+	req->content_len = content_len;
+	ptr = req->content;
+
+	APPEND(ptr, method, strlen (method)); *ptr++ = ' ';
+	APPEND(ptr, url->path, strlen (url->path)); *ptr++ = ' ';
+	APPEND(ptr, req->http_version, strlen (req->http_version));
+	APPEND(ptr, "\r\n", 2);
+
+	for (i = 0; i < table->size; i++)
+	{
+		if (table->table[i].state == OCCUPIED)
+		{
+			char *key = table->table[i].key;
+			char *value = hash_table_get (table, key);	
+
+			APPEND(ptr, key, strlen (key)); APPEND(ptr, ": ", 2);
+			APPEND(ptr, value, strlen (value)); APPEND(ptr, "\r\n", 2);
+		}
+	}
+
+	APPEND(ptr, "\r\n", 2);
+		
+	return req;
+}
+
+void 
+print_request (struct request *req)
+{
+	printf ("%s", req->content);
+}
+
+int 
+write_to_socket (int sock, char *buf, int len) 
+{
+	int n_written = 0;
+	char *bufp = buf;
+	
+	while (n_written < len) 
+	{
+		int n_bytes;
+		if ((n_bytes = write (sock, bufp, len - n_written)) < 0 || (n_bytes == 0 && n_written < len)) 
+		{
+			fprintf (stderr, "Couldn't completely write to socket. Wrote %d bytes of %d\n", n_written, len);
+			exit (1);
+		}
+		n_written += n_bytes;
+	}	
+	return 0;
+}
+
+	
+int
+parse_response (struct content *resp_content, struct response *resp)
+{
+	char *p = resp_content->body;
+	char *body = resp_content->body;
+
+	/* The response should begin with HTTP/\d.\d \d\d\d, that is, HTTP version and status code */
+	if (strncmp (p, "HTTP", 4) != 0) 
+	{
+		fprintf (stderr, "Protocol does not appear to be HTTP\n");
+		return -1;
+	}
+	resp->protocol = xstrdup ("HTTP");
+	p += 4;
+	if (p[0] != '/' || !IS_DIGIT(p[1]) || p[2] != '.' || !IS_DIGIT(p[3])) 
+	{
+		fprintf (stderr, "HTTP Version not found\n");
+		return -1;	
+	}
+	p += 4;
+	SKIP_WS(p);
+
+	/* Get the status code */	
+	
+	if (!IS_DIGIT(p[0]) || !IS_DIGIT(p[1]) || !IS_DIGIT(p[2])) 
+	{
+		fprintf (stderr, "Couldn't find the status code in the response body\n");	
+		return -1;
+	}
+	resp->status = 100 * (p[0] - '0') + 10 * (p[1] - '0') + p[2] - '0';
+	fprintf (stderr, "Server returned status %d\n", resp->status);
+	
+	/* Find the next line. This is where the headers should begin */
+
+	resp->headers = hash_table_new (31);
+
+	/* Make sure we are not at the end of the header */
+
+	while ((p = strstr (p, "\r\n")))
+	{
+		char *name, *name_end;
+		char *value, *value_end;
+		if (strstr (p + 2, "\r\n") == p + 2)
+		{
+			p += 4;	
+			break;
+		}
+	
+		p = p + 2;
+	
+		name_end = strchr (p, ':');	
+		name = malloc (name_end - p + 1);
+		strncpy (name, p, name_end - p);
+	
+		p = name_end + 2;
+		value_end = strstr (p, "\r\n");
+		value = malloc (value_end - p + 1);
+		strncpy (value, p, value_end - p);
+	
+		hash_table_put (resp->headers, name, value);
+	}	
+
+	resp->header_body = calloc (1, p - body + 1);
+	strncpy (resp->header_body, body, p - body);
+
+	return 0;
+}
+
+void
+print_content (const struct content *cont)
+{
+	int n_printed = 0;
+	int l;
+	char *cur = cont->body;
+
+	while (n_printed < cont->len)
+	{
+		l = strlen (cur);
+		printf ("%s\n", cur);
+		n_printed += (l + 1);
+		cur += (l + 1);
+	}
+}
+
+/* See how easy it is... oh my goodness */
+int
+add_header_to_request (struct request *req, char *name, char *value)
+{
+	return hash_table_put (req->headers, name, value);
+}
+
+/* Remove null characters that come before LENGTH in the string.
+ * Assume str + length is in a valid portion of memory. */
+char *
+remove_null_characters (char *str, int length)
+{
+	int i;
+	for (i = 0; i < length; i++)
+	{
+		if (str[i] == '\0')
+			memmove (&str[i], &str[i] + 1, (str + length) - (&str[i] + 1));
+	}
+	return str;
+}
+
+struct content*
+read_response (int sock, char *buf, int len)
+{
+	/* Read the header of the response */
+	
+	char *response_body = NULL;
+	struct content *ret;
+	int n_bytes, n_read = 0;
+	int is_content = 0;
+	
+	memset (buf, 0, len);
+	while ((n_bytes = read (sock, buf, len)) > 0)
+	{
+		int current_length = n_read;
+		char *brk;
+		if (is_content)
+			write (options.output_fd, buf, n_bytes);	
+		else
+		{
+			brk = strstr (buf, "\r\n\r\n");
+			if (brk)
+			{
+				is_content = 1;	
+				write (options.output_fd, brk + 4, (buf + len) - brk - 4);
+			}
+		}
+		n_read += n_bytes;
+		response_body = realloc (response_body, n_read);
+		if (!response_body)
+		{
+			perror ("Couldn't allocate more memory for response body");
+			exit (1);
+		}
+
+		/* remove_null_characters (buf, n_bytes); */
+		strncpy (response_body + current_length, buf, n_bytes);
+
+		/*fprintf (stderr, "%s\n", buf);	 */
+	
+		response_body[n_read] = '\0';
+		memset (buf, 0, len);
+	}
+
+	/* Determine whether we want to read the content */
+	
+	/* Read the content and write to the proper output stream if applicable */
+	#ifdef DEBUG
+	fprintf (stderr, "Length of response: %d\n", n_read);
+	#endif
+	
+	ret = malloc (sizeof (struct content));
+	ret->body = response_body;
+	ret->len = n_read;
+	return ret;
+}
+
+/* needs serious testing */
+int
+put_request_header (struct request *req, char *name, char *value)
+{
+	/* Change the content of the actual request. An alternative would be to only
+		create a new content string when a request is being sent */
+	if (hash_table_get (req->headers, name) == NULL)
+	{	
+		char *ptr;
+		int new_length = req->content_len + strlen (name) + 2 + strlen (value) + 1;
+		req->content = realloc (req->content, new_length);
+		hash_table_put (req->headers, name, value);
+
+		ptr = req->content + req->content_len - 2;
+		memset (ptr, 0, new_length - req->content_len);
+		APPEND(ptr, name, strlen (name)); APPEND(ptr, ": ", 2);
+		APPEND(ptr, value, strlen (value)); APPEND(ptr, "\r\n", 2); APPEND(ptr, "\r\n", 2);
+		req->content_len = new_length - 1;
+	}	
+	else
+	{
+		hash_table_put (req->headers, name, value);	
+	
+		printf ("Key-value pair (%s, %s)\n", name, hash_table_get (req->headers, name));
+		req = make_request (req->url, req->headers, req->method);
+	}
+
+	return 0;
+}
+
+int send_request (int sock, struct request *req)
+{
+	#ifdef DEBUG
+	fprintf (stderr, "\n%s\n", req->content);	
+	#endif
+	return write_to_socket (sock, req->content, req->content_len);		
+}
+
+#include "opt.h"
+#include "url.h"
+#include "utils.h"
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
+
+#define MAX_URL_LENGTH 512 /* We won't worry too much about query strings for the moment. */
+
+#ifndef IS_DIGIT
+#define IS_DIGIT(x) (((x) - '0') >= 0 && ((x) - '0' <= 9))
+#endif
+#define min(a,b) ((a) < (b) ? (a) : (b))
+
+#ifndef HTTP_PORT
+#define HTTP_PORT 80
+#endif
+
+#define COPY_TO_BUF(buf, src, len) do { \
+	memset (buf, 0, sizeof (buf)); 		\
+	strncpy (buf, src, len);			\
+} 										\
+while (0)
+
+
+static char buf[MAX_URL_LENGTH];
+
+/* We already have a buffer so don't allocate another one on the stack
+ * within the function. Use 0 to indicate success and -1 to indicate
+ * anything else.*/
+
+#ifndef MAX_DIR_SIZE
+#define MAX_DIR_SIZE 128
+#endif
+
+#ifndef DIR_PERMS
+#define DIR_PERMS 0755
+#endif
+
+int
+create_directories (char *pathname)
+{
+	int status;
+	struct stat st;
+	char *dir_start, *dir_end;
+	char *file_part; /* Beginning of the part of PATHNAME indicating the file */
+	char *local_path; /* Path that is being used on the local host */
+	
+	/* Assume that the user is specifying the full path. We do this
+     * so that we can pass relative links from HTML pages and have
+     * the files created according to those links. If there is
+     * no slash at the end, chop off the tail of the path (the
+     * part indicating the filename) because we have no use for it 
+     * (we are only creating prerequisite directories). If there is no tail, 
+     * assume that all parts of the path are directories that may
+     * or may not exist yet. */
+
+	local_path = strdup (pathname); /* Don't modify the original path */
+	if (local_path[0] == '/')
+		local_path++;
+
+	file_part = skip_dirs (local_path);
+	if (strcmp (file_part, local_path) == 0)
+		return 0; /* Nothing needs to be done, the entire path is just a filename with no directories above it */
+
+	if (strcmp (file_part, "") != 0) /* If we have a non-empty string, discard the filename */
+	{
+		local_path[file_part - local_path] = '\0';
+		fprintf (stderr, "Directory structure that may need to be created: %s\n", local_path);
+	}
+		
+	status = stat (local_path, &st);
+	if (status == 0)
+		return 0;	
+	
+	else 
+	{ 
+		int exists;
+		dir_start = local_path;
+		dir_end = strchr (local_path, '/');
+	
+		while (dir_end) /* We are assured to be at the end of some directory because we have found the '/' character */
+		{
+			char dir[MAX_DIR_SIZE + 1];
+			memset (dir, 0, MAX_DIR_SIZE + 1);
+			strncpy (dir, dir_start, dir_end - dir_start);	
+
+			fprintf (stderr, "Trying to create directory %s\n", dir);	
+		
+			exists = stat (dir, &st);
+			if (exists < 0) /* We need to create it  */
+			{
+				if (mkdir (dir, DIR_PERMS) < 0)
+				{	
+					perror ("Unable to create directory");	
+					exit (1);
+				}
+			}
+			dir_end++;
+			dir_end = strchr (dir_end, '/');
+		}
+	}
+	
+	return 0;
+}
+
+url_err_t
+parse_url (char *url, url_t *u)
+{
+
+	/* Make sure it is a valid URL. We are only using HTTP for now so make sure that
+ 	 * either (a) the URL begins with "http://" or (b) the URL begins with a host. */
+
+ 	/* We will assume that if the char sequence "://" is not present then we have
+ 	 * a host name that we will assume is using HTTP (port 80) */
+
+	char *protocol_begin, *protocol_end;
+	char *host_begin, *host_end;
+	char *port_begin, *port_end;
+	char *path_begin, *path_end;
+	int has_protocol = 0;
+	
+	memset (u, 0, sizeof (url_t));
+	protocol_begin = url;
+	protocol_end = strstr (url, "://");	
+	
+	if (protocol_end)
+	{
+		if (strncmp (protocol_begin, "http", 4) != 0)
+		{
+			fprintf (stderr, "Protocol of url not supported\n");
+			return PROTO_NOT_SUP;
+		}
+		if (3 >= strlen (protocol_end))
+		{
+			fprintf (stderr, "Host not found in URL\n");
+			exit (1);
+		}
+		host_begin = protocol_end + 3;
+		u->protocol = malloc (protocol_end - protocol_begin + 1);
+		strncpy (u->protocol, protocol_begin, protocol_end - protocol_begin);
+	
+		has_protocol = 1;
+	}
+	else
+	{
+		host_begin = url;
+		u->protocol = strdup ("http");
+	}
+	#ifndef HTTPS_PORT
+		#define HTTPS_PORT 443
+	#endif
+
+	u->port = strcmp (u->protocol, "https") ? HTTP_PORT : HTTPS_PORT;
+	
+	port_begin = strchr (host_begin, ':');	
+	if (port_begin)
+	{
+		char *tmp;
+
+		port_begin++;
+		tmp = port_begin;
+		while (IS_DIGIT(*tmp++));
+		if (tmp == port_begin)
+		{	
+			fprintf (stderr, "No port specified\n");
+			return MALFORMED_URL;	
+		}
+		
+		port_end = tmp - 1;
+	
+		COPY_TO_BUF (buf, port_begin, port_end - port_begin);
+		/* fprintf (stderr, "Found port %s\n", buf); */
+		u->port = atoi (buf); 
+	}
+	
+	host_end = port_begin ? port_begin - 1 : strchr (host_begin, '/');	
+	
+	if (!host_end)
+	{	
+		u->path = strdup ("/");	
+		u->host = strdup (host_begin); /* Don't do this because we end up having a slash on the end of hostnames when the path is "/' */
+		if (host_end && host_end[1] == '\0')
+			u->host[strlen (u->host)] = '\0';
+	}
+	else  /* Construct the path */
+	{
+		char *query_begin;
+		char *fragment_begin;
+
+		path_begin = (port_begin ? port_end : host_end);
+		if (path_begin && strlen (path_begin) > 0) 
+		{	
+			query_begin = strchr (path_begin, '?');
+			fragment_begin = strchr (path_begin, '#');
+			if (query_begin && fragment_begin)
+				path_end = min (query_begin, fragment_begin);
+			else
+				path_end = query_begin ? query_begin : (fragment_begin ? fragment_begin : path_begin + strlen (path_begin));
+
+			if (query_begin)
+			{	
+				query_begin++;
+				u->query = strdup (query_begin);
+			}
+		
+			COPY_TO_BUF(buf, path_begin, path_end - path_begin);
+			u->path = strdup (buf);
+			/* if (u->path[0] == '/')
+				u->path++; */
+		}
+		else
+			u->path = strdup ("");
+	
+		COPY_TO_BUF(buf, host_begin, host_end - host_begin);
+		/* fprintf (stderr, "Found host %s\n", buf); */
+		u->host = strdup (buf);
+	}
+
+	if (has_protocol) 
+		u->full_url = strdup (url);	
+	else
+	{
+		memset (buf, 0, sizeof (buf));
+		sprintf (buf, "http://%s", url);
+		u->full_url = strdup (buf);
+		if (u->full_url[strlen (u->full_url) - 1] == '/')
+			u->full_url[strlen (u->full_url) - 1] = '\0';
+	}
+	u->length = strlen (u->full_url);
+	
+	return URL_OK;	
+}
+
+/* Assign the url to a file on the local host. If necessary, create directories
+ * so that the filename can be created according to the path. */
+
+char *url_file_name (url_t *u)
+{
+	char *name, *tmp, *path = u->path;
+	int path_end;
+	if (strcmp ("", path) == 0 || strcmp ("/", path) == 0)
+	{
+		name = malloc (strlen ("index.html") + 1);	
+		strcpy (name, "index.html");
+		return name;
+	}
+	
+	tmp = strdup (path);
+	
+	/* Remove any trailing slashes */
+	while ((path_end = strlen (tmp) - 1) && tmp[path_end] == '/')
+	{	
+		tmp[path_end] = '\0';
+	}
+	
+	/* Create prerequisite directories if recursive option has been specified. Do NOT 
+ 	 * create the file. Keep that functionality separate. */
+	
+	if (options.recursive)
+	{	
+		/* Use the original path because we want the trailing slash.
+		 * Otherwise create_directories() will think that the last part of the path is a directory
+		 * and will create it as a directory. */
+
+		if (create_directories (path) != -1)
+		{
+			free (tmp);
+			return path;
+		}
+		else
+			return NULL; /* Indicate that something went wrong and we will not be able to create
+				* the file yet */
+	}
+	else /* We aren't creating a directory structure */
+	{	
+		char *filename = strdup (skip_dirs (tmp));
+		free (tmp);
+		return filename;
+	}
+		
+	/* Write the function so that if all the prerequisites are there, nothing happens. File creation
+  	 * needs to be done separately */
+	
+}
+
+void print_url (url_t *u)
+{
+	printf ("Full URL: %s\n", u->full_url);
+	printf ("Length of full url: %d\n", u->length);
+	printf ("Protocol: %s\n", u->protocol);
+	printf ("Hostname: %s\n", u->host);
+	printf ("Port number: %d\n", u->port);
+	printf ("Path: %s\n", u->path);
+	printf ("Query string: %s\n", u->query);
+}
+#include <string.h>
+#include "utils.h"
+
+char *
+skip_dirs (char *path) 
+{
+	char *new_path;
+	new_path = strchr (path, '/');
+	if (new_path)
+		return skip_dirs (new_path + 1);
+	else
+		return path;
+}
