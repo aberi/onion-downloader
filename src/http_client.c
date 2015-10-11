@@ -270,16 +270,7 @@ main(int argc, char *argv[])
 		{
 			char *location, *fmt;
 			case HTTP_OK:
-				return 0; /* Output file is written, nothing else to do (but once we
-								implement recursive downloading, this will change. We
-								will need to decide if we want to recurse, get the 
-								links from the output file by parsing it, and visit
-								every appropriate link. Don't worry about things
-								like persistent connections just yet, but they
-								will become essential later. You don't want to
-								have to reconnect to the same host 1000 times 
-								when trying to mirror a site. You also want
-								to be able to use cookies. */
+				return 0;
 			case HTTP_MOVED:
 			case HTTP_FOUND:
 				if ((location = hash_table_get (resp->headers, "Location")))

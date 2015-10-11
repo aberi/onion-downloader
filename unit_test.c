@@ -202,13 +202,41 @@ test_parse_2 (void)
 	return 0;
 }
 
+int test_merge_lists (void)
+{
+	struct html_tag_list *l1, *l2;
+		
+	l1 = find_all_tags ("<img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img><a href=\"aberi.github.io\
+\"></a><img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img>", "img");
+
+	l2 = find_all_tags ("<img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img><a href=\"aberi.github.io\
+\"></a><img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img>", "img");
+
+	merge_lists (l1, l2);
+	print_all_tags (l1);	
+	
+	return 0;
+}
+
+int
+test_parse_file (void)
+{
+	int fd = open ("index.html", O_RDONLY, 0);
+	struct html_tag_list *the_list = get_links_from_file (fd);
+
+	print_all_tags (the_list);	
+	
+	return 0;
+}
+
+
 int
 test_find_tag_among_other (void)
 {
 	struct html_tag_list *htl;
 	char *test = "<img src=\"/icon.png\" href=\"/\">Hello all</img><img src=\"/icon.png\" href=\"/\">Hello all</img><a href=\"/index.html\"></a><img\
  src=\"/img.png\" href=\"/index.html\"></img>";
-	char *names[] = {"img", "a", NULL};
+	char *names[] = {"img", "a",  NULL};
 	char *f = find_tag (test, "img");
 	
 	htl = find_all_tags (test, "img");
@@ -225,8 +253,8 @@ test_find_tag_among_other (void)
 int
 main (void)
 {	
-	if (test_hash_table () < 0)
-		fprintf (stderr, "Hash table test failed\n");
+/*	if (test_hash_table () < 0) 
+		fprintf (stderr, "Hash table test failed\n"); 
 
 	if (test_request () < 0)
 		fprintf (stderr, "Requests not working properly\n");
@@ -234,17 +262,20 @@ main (void)
 	if (test_file_creation () < 0)
 		fprintf (stderr, "File creation not working properly\n");
 	
-/*	if (test_parse () < 0)
-		fprintf (stderr, "Parsing not working properly\n"); */
-
 	if (test_parse_2 () < 0)
 		fprintf (stderr, "Parsing not working properly\n");
 
 	if (test_html_tag_list () < 0)
-		fprintf (stderr, "Linked list of HTML tags is not working\n");	
+		fprintf (stderr, "Linked list of HTML tags is not working\n");	*/ 
 
 	if (test_find_tag_among_other () < 0)
-			fprintf (stderr, "Can't find tags properly\n");
-		
+		fprintf (stderr, "Can't find tags properly\n");
+	
+	/* if (test_merge_lists () < 0)
+		fprintf (stderr, "Lists are not merging properly\n"); */
+	
+	if (test_parse_file () < 0) 
+		fprintf (stderr, "Cannot parse the file\n"); 
+
 	return 0;
 }

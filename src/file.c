@@ -10,6 +10,7 @@
 
 typedef unsigned int uint32_t;
 
+
 exist_t
 directory_exists (char *dirname)
 {

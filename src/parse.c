@@ -5,9 +5,37 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 #define TAG_START_FMT "<%s"
 #define TAG_END_FMT "</%s>"
+
+/* Subject to change */
+static char *important_tags[] = { "a", "src", NULL};
+
+/* This is it. */
+struct html_tag_list *
+get_links_from_file (int fd)
+{
+	char buf[BUFSIZ]; /* If a tag is partially in one buffer and partially in the next,
+							the buffer should be big enough that it will not trickle into
+							a third buffer i.e. at most 2 buffers for a single tag */	
+
+	struct html_tag_list *the_list = html_tag_list_init (NULL); /* Master list */
+	struct html_tag_list *round_list = html_tag_list_init (NULL); /* Links from the current buffer. Merge them with the master list */
+	int n_bytes, n_read = 0;
+
+	while ((n_bytes = read (fd, buf, sizeof (buf))) > 0)
+	{
+		n_read += n_bytes;
+		round_list = find_tags_by_name (buf, important_tags);
+		merge_lists (the_list, round_list);	
+	}
+
+	return the_list;	
+}
 
 char *
 tag_start (char *tag_name)
@@ -287,8 +315,9 @@ find_tags_by_name (char *text, char **names)
 	while (!all_false (finished, n_names))
 	{	
 		for (i = 0; i < n_names; i++)
-		{	
-			curs[i] = find_tag (curs[i], names[i]);
+		{
+			if (curs[i])
+				curs[i] = find_tag (curs[i], names[i]);
 			if (!curs[i] || !(*curs[i]))
 			{
 				finished[i] = 0;
@@ -341,7 +370,7 @@ find_all_tags (char *text, char *name)
 char *
 find_tag (char *text, char *name)
 {
-	while (*text)
+	while (text && *text)
 	{
 		while (*text != '<')
 			text++;
