@@ -268,8 +268,8 @@ main (void)
 	if (test_html_tag_list () < 0)
 		fprintf (stderr, "Linked list of HTML tags is not working\n");	*/ 
 
-	if (test_find_tag_among_other () < 0)
-		fprintf (stderr, "Can't find tags properly\n");
+/*	if (test_find_tag_among_other () < 0)
+		fprintf (stderr, "Can't find tags properly\n"); */
 	
 	/* if (test_merge_lists () < 0)
 		fprintf (stderr, "Lists are not merging properly\n"); */
