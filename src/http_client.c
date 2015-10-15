@@ -146,7 +146,7 @@ connect_to_ip (int sock, struct sockaddr_in *addr)
 void
 usage (void)
 {
-	fprintf (stderr, "Usage: ondl <url> [-o output file] [-r] [-m http method]\n");
+	fprintf (stderr, "Usage: client <url> [-o output file] [-r] [-m http method]\n");
 	exit (1);
 }
 
