@@ -10,7 +10,6 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <getopt.h>
-#include <assert.h>
 
 #include "hash.h"
 #include "opt.h"
@@ -20,6 +19,7 @@
 #include "request.h"
 #include "file.h"
 #include "parse.h"
+#include "queue.h"
 
 #define IPV4_ADDR_LEN 4
 #define MAX_REDIRECT 5
@@ -208,7 +208,10 @@ main(int argc, char *argv[])
 	char buf[BUFSIZ];
 	int sock, num_redirect = 0; /* Socket that is connected to the host and the number of redirections (3xx codes)
 									that have taken place during the current attempt to download a webpage */
+	int recursion_depth;
 	url_t u;
+	
+	struct url_queue *queue = url_queue_init ();
 
 	struct sockaddr_in client, server; /* Addresses of the local and remote host */
 	struct request *req; /* Request to be sent to remote host. Currently must be an HTTP request */  
@@ -243,6 +246,7 @@ main(int argc, char *argv[])
 
 		/* Always create requests from a struct hash_table. Don't use a pair of char **; we can't
  			easily insert and remove from a pair of char ** like we can with a struct hash_table */
+	request:
 		req = make_request (&u, headers, method);
 		send_request (sock, req);
 
@@ -279,13 +283,20 @@ main(int argc, char *argv[])
 					if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
 					{
 						the_list = get_links_from_file (new_fd);
-						print_all_tags (the_list);
+						/* print_all_tags (the_list); */
 						printf ("\n***********RELATIVE LINKS***********\n");
 						print_all_attribute (the_list, "href", is_relative);
 						printf ("\n***********ABSOLUTE LINKS***********\n");
 						print_all_attribute (the_list, "href", is_absolute);
-						printf ("\n***********OUTGOING LINKS***********\n");
-						print_all_attribute (the_list, "href", is_outgoing);
+						printf ("\n***********OUTGOING HTTP LINKS***********\n");
+						print_all_attribute (the_list, "href", is_outgoing_http);
+						printf ("\n***********OUTGOING HTTPS LINKS***********\n");
+						print_all_attribute (the_list, "href", is_outgoing_https);
+	
+						if (options.recursive) /* If recursion is on, enqueue the relative links and download them */
+						{	
+							/* Create a list of all the relative links */
+						}
 					}
 					return 0;
 			case HTTP_MOVED:
@@ -308,9 +319,6 @@ main(int argc, char *argv[])
 				fmt = "rm %s";
 				memset (buf, 0, sizeof (buf));
 				sprintf (buf, fmt, options.output_file);
-				#ifdef DEBUG
-				fprintf (stderr, "Calling \"%s\"\n", buf);
-				#endif
 				system (buf);
 				return 1;
 				break;

@@ -31,11 +31,15 @@ typedef struct url {
 	/* If the query contains relevant information, it will be here */
 	int is_referred; /* Did we get to this URL from a redirection? */
 	char *reference; /* URL from which we were redirected to the current one */
+
+	struct url *next; /* We will be using URLs in lists quite often. This field may or may not be used */
 } url_t;
 
 int is_relative (const char *);
 int is_absolute (const char *);
 int is_outgoing (const char *);
+int is_outgoing_http (const char *);
+int is_outgoing_https (const char *);
 int create_directories (char *);
 char *url_file_name(url_t *);
 url_err_t parse_url (char *, url_t *);

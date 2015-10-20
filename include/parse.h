@@ -12,6 +12,7 @@ struct html_tag
 /* is this really necessary ? */
 struct html_tag_list
 {
+	int count;
 	struct html_tag *head;
 	struct html_tag *tail; /* We want to be able to add directly to the end of the list. */
 									

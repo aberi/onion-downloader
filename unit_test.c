@@ -5,6 +5,7 @@
 #include "request.h"
 #include "file.h"
 #include "parse.h"
+#include "queue.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -251,6 +252,23 @@ test_find_tag_among_other (void)
 }
 
 int
+test_queue (void)
+{
+	struct url_queue *queue = url_queue_init ();
+	url_t u, *p;
+	p = &u;
+	parse_url ("http://www.google.fr", p);
+	enqueue (queue, p);
+	print_queue (queue);
+	parse_url ("http://www.amazon.com", p);
+	enqueue (queue, p);
+	print_queue (queue);
+	return 0;
+	
+	fail: return -1;
+}
+
+int
 main (void)
 {	
 /*	if (test_hash_table () < 0) 
@@ -276,6 +294,9 @@ main (void)
 	
 	if (test_parse_file () < 0) 
 		fprintf (stderr, "Cannot parse the file\n"); 
+
+	if (test_queue () < 0)
+		fprintf (stderr, "Queue structure is not working properly\n");
 
 	return 0;
 }

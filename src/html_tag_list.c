@@ -24,6 +24,7 @@ html_tag_list_remove_head (struct html_tag_list *list)
 		temp = list->head;
 		list->head = list->head->next;
 		free (temp);
+		list->count--;
 		return ret;
 	}
 	else return NULL;
@@ -49,6 +50,7 @@ html_tag_list_init (struct html_tag *tag)
 	struct html_tag_list *list = xnew (struct html_tag_list);
 	list->tail = list->head = tag;
 	if (tag) tag->next = NULL;
+	list->count = 0;
 	
 	return list;
 }
@@ -78,6 +80,21 @@ print_all_attribute (const struct html_tag_list *list, char *attr_name, int (*fi
 	}
 }
 
+char **
+get_all_attribute (const struct html_tag_list *list, char *attr_name)
+{
+	char **values = calloc (list->count, sizeof (char *));
+	int count = 0;
+	struct html_tag *cur = list->head;
+	while (cur)
+	{
+		char *attr_value = hash_table_get (cur->attributes, attr_name);
+		if (attr_value)
+			values[count++] = strdup (attr_value);
+		cur = cur->next;
+	}
+	return values;
+}
 
 int html_tag_list_add (struct html_tag_list *list, struct html_tag *tag)
 {
@@ -91,6 +108,7 @@ int html_tag_list_add (struct html_tag_list *list, struct html_tag *tag)
 		}
 		else
 			list->head = list->tail = tag;
+		list->count++;
 	}
 	return 0;
 }
