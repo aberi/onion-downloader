@@ -81,16 +81,27 @@ print_all_attribute (const struct html_tag_list *list, char *attr_name, int (*fi
 }
 
 char **
-get_all_attribute (const struct html_tag_list *list, char *attr_name)
+get_all_attribute (const struct html_tag_list *list, char *attr_name, int (*filter)(const char *))
 {
-	char **values = calloc (list->count, sizeof (char *));
+	char **values = calloc (list->count + 1, sizeof (char *));
 	int count = 0;
 	struct html_tag *cur = list->head;
 	while (cur)
 	{
 		char *attr_value = hash_table_get (cur->attributes, attr_name);
 		if (attr_value)
-			values[count++] = strdup (attr_value);
+		{
+			int can_add = filter ? filter (attr_value) : 1;
+			if (can_add) 
+				values[count] = strdup (attr_value);
+
+			count++;
+			if (count >= list->count)
+			{
+				values[count] = NULL;
+				return values;
+			}
+		}
 		cur = cur->next;
 	}
 	return values;

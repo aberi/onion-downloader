@@ -30,6 +30,7 @@ struct html_tag *html_tag_list_remove_head (struct html_tag_list *);
 
 char *find_tag (char *, char *);
 
+char **get_all_attribute (const struct html_tag_list *, char *, int (*)(const char *));
 void print_all_tags (const struct html_tag_list *);
 void print_all_attribute (const struct html_tag_list *, char *, int (*)(const char *));
 struct html_tag *get_tags_of_name (char *name);

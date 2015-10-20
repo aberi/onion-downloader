@@ -223,9 +223,16 @@ int
 test_parse_file (void)
 {
 	int fd = open ("index.html", O_RDONLY, 0);
+	int i;
 	struct html_tag_list *the_list = get_links_from_file (fd);
+	char **hrefs;
 
 	print_all_tags (the_list);	
+	hrefs = get_all_attribute (the_list, "href");	
+
+	printf ("Number of items in list: %d\n", the_list->count);
+	for (i = 0; i < the_list->count; i++)
+		printf ("href=%s\n", hrefs[i]);
 	
 	return 0;
 }
@@ -295,8 +302,8 @@ main (void)
 	if (test_parse_file () < 0) 
 		fprintf (stderr, "Cannot parse the file\n"); 
 
-	if (test_queue () < 0)
-		fprintf (stderr, "Queue structure is not working properly\n");
+/* 	if (test_queue () < 0)
+		fprintf (stderr, "Queue structure is not working properly\n"); */
 
 	return 0;
 }

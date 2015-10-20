@@ -226,15 +226,11 @@ main(int argc, char *argv[])
 	init_opt (argc, argv, optstring);
 	parse_url (options.url, &u);
 
-	if (options.output_fd < 0)
-	/* Write to a file based on the path of the URL. If the path is "/", use index.html by default */
-		create_output_file (u.path);
-
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
-		options.sock = sock = create_and_bind_tcp_socket (&client);
 		resolve_host (u.host, &server, HTTP_PORT);
-	
+
+		options.sock = sock = create_and_bind_tcp_socket (&client);
 		if (connect_to_ip (sock, &server) < 0) 
 		{
 			perror ("Unable to connect to the server");
@@ -247,6 +243,9 @@ main(int argc, char *argv[])
 		/* Always create requests from a struct hash_table. Don't use a pair of char **; we can't
  			easily insert and remove from a pair of char ** like we can with a struct hash_table */
 	request:
+		if (options.output_fd < 0)
+			create_output_file (u.path);
+
 		req = make_request (&u, headers, method);
 		send_request (sock, req);
 
@@ -295,7 +294,16 @@ main(int argc, char *argv[])
 	
 						if (options.recursive) /* If recursion is on, enqueue the relative links and download them */
 						{	
-							/* Create a list of all the relative links */
+							char **hrefs;
+							int k;
+							recursion_depth--;
+							hrefs = get_all_attribute (the_list, "href", is_absolute);
+	
+							printf ("\nList of links\n\n");
+		
+							for (k = 0; k < the_list->count; k++)
+								if (hrefs[k])
+									printf ("%s\n", hrefs[k]);
 						}
 					}
 					return 0;
