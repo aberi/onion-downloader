@@ -33,6 +33,9 @@ typedef struct url {
 	char *reference; /* URL from which we were redirected to the current one */
 } url_t;
 
+int is_relative (const char *);
+int is_absolute (const char *);
+int is_outgoing (const char *);
 int create_directories (char *);
 char *url_file_name(url_t *);
 url_err_t parse_url (char *, url_t *);

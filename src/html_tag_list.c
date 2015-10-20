@@ -57,13 +57,27 @@ void
 print_all_tags (const struct html_tag_list *list)
 {
 	struct html_tag *cur = list->head;
-	printf ("\n\n********************************** CURRENT LIST **********************************\n\n");
 	while (cur)
 	{
 		print_tag (cur);
 		cur = cur->next;
 	}
 }
+
+void
+print_all_attribute (const struct html_tag_list *list, char *attr_name, int (*filter)(const char *))
+{
+	struct html_tag *cur = list->head;
+	while (cur)
+	{
+		char *attr_value = hash_table_get (cur->attributes, attr_name);
+		int can_print = filter ? filter (attr_value) : 1;
+		if (attr_value && can_print)
+			printf ("%s=%s\n", attr_name, attr_value);
+		cur = cur->next;
+	}
+}
+
 
 int html_tag_list_add (struct html_tag_list *list, struct html_tag *tag)
 {

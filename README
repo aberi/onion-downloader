@@ -38,6 +38,11 @@ LITERALLY a case with a newline directly before the href value (after the = sign
 
 LITERALLY a case with a space after the = ... jesus christ there are too many possibilities
 
+TODO: You may want to make it so that the body of the response is actually what shows
+up in the response body because we are not really as concerned with server responses
+right now (we will be when we attempt to fix redirection). It's more important that only the
+content of the file is contained within the response body.
+
 There are actually a ton of websites (i.e. those with really clean, XML-like HTML) that
 the parser can parse the a href's of. Account for the corner cases and you will be well
 on your way to recursion.

@@ -38,8 +38,6 @@ get_links_from_file (int fd)
 		merge_lists (the_list, round_list);	
 	/*	print_all_tags (the_list);*/
 	}
-
-	print_all_tags (the_list);
 	return the_list;	
 }
 

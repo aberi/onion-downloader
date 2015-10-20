@@ -16,4 +16,4 @@ unit_test.o: unit_test.c
 	$(CC) -c $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm *.o client
+	rm *.o ondl

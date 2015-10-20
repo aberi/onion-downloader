@@ -41,6 +41,25 @@ static char buf[MAX_URL_LENGTH];
 #define DIR_PERMS 0755
 #endif
 
+/* Assume for now that we never encounter any FTP links */
+int 
+is_relative (const char *link)
+{
+	return *link != '/'  /* absolute path that is located on the same remote host */
+			&& strncmp (link, "http", 4) != 0; /* Outgoing link to new host */
+}
+
+int
+is_absolute (const char *link)
+{
+	return *link == '/';
+}
+
+int
+is_outgoing (const char *link)
+{
+	return strncmp (link, "http", 4) == 0;
+}
 
 int
 create_directories (char *pathname)

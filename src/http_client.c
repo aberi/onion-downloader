@@ -27,8 +27,6 @@
 
 static char *optstring = "Rm:o:Op:r";
 
-static char *important_tags[] = {"a", NULL};
-
 struct opt options;
 
 /* Make an argument processing function to begin with.
@@ -234,7 +232,7 @@ main(int argc, char *argv[])
 		options.sock = sock = create_and_bind_tcp_socket (&client);
 		resolve_host (u.host, &server, HTTP_PORT);
 	
-		if (connect_to_ip (sock, &server) < 0)
+		if (connect_to_ip (sock, &server) < 0) 
 		{
 			perror ("Unable to connect to the server");
 			exit (1);	
@@ -275,10 +273,20 @@ main(int argc, char *argv[])
 		{
 			char *location, *fmt;
 			struct html_tag_list *the_list;
+			int new_fd;
 			case HTTP_OK:
-					printf ("%s\n", response_body);
-					the_list = find_tags_by_name (response_body, important_tags, NULL);
-					print_all_tags (the_list);
+					close (options.output_fd);
+					if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
+					{
+						the_list = get_links_from_file (new_fd);
+						print_all_tags (the_list);
+						printf ("\n***********RELATIVE LINKS***********\n");
+						print_all_attribute (the_list, "href", is_relative);
+						printf ("\n***********ABSOLUTE LINKS***********\n");
+						print_all_attribute (the_list, "href", is_absolute);
+						printf ("\n***********OUTGOING LINKS***********\n");
+						print_all_attribute (the_list, "href", is_outgoing);
+					}
 					return 0;
 			case HTTP_MOVED:
 			case HTTP_FOUND:
