@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#define IS_RELATIVE(path) (*(path) == '/')
+
 typedef enum {
 	URL_OK,
 	MALFORMED_URL,

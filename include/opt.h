@@ -9,6 +9,7 @@ struct opt {
 	char *output_file;
 	char *log_file;
 	char *method;
+	int sock;
 	int output_fd;
 	int show_server_response;
 	int print_content;

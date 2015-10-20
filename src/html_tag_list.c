@@ -57,6 +57,7 @@ void
 print_all_tags (const struct html_tag_list *list)
 {
 	struct html_tag *cur = list->head;
+	printf ("\n\n********************************** CURRENT LIST **********************************\n\n");
 	while (cur)
 	{
 		print_tag (cur);

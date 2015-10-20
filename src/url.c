@@ -41,6 +41,7 @@ static char buf[MAX_URL_LENGTH];
 #define DIR_PERMS 0755
 #endif
 
+
 int
 create_directories (char *pathname)
 {

@@ -1,6 +1,7 @@
 #include "parse.h"
 #include "hash.h"
 #include "utils.h"
+#include "opt.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -12,14 +13,16 @@
 #define TAG_START_FMT "<%s"
 #define TAG_END_FMT "</%s>"
 
+struct opt options;
+
 /* Subject to change */
-static char *important_tags[] = { "a", "src", NULL};
+static char *important_tags[] = { "a", NULL};
 
 /* This is it. */
 struct html_tag_list *
 get_links_from_file (int fd)
 {
-	char buf[BUFSIZ]; /* If a tag is partially in one buffer and partially in the next,
+	char buf[BUFSIZ * 4]; /* If a tag is partially in one buffer and partially in the next,
 							the buffer should be big enough that it will not trickle into
 							a third buffer i.e. at most 2 buffers for a single tag */	
 
@@ -27,13 +30,16 @@ get_links_from_file (int fd)
 	struct html_tag_list *round_list = html_tag_list_init (NULL); /* Links from the current buffer. Merge them with the master list */
 	int n_bytes, n_read = 0;
 
+	lseek (fd, 0, SEEK_SET);
 	while ((n_bytes = read (fd, buf, sizeof (buf))) > 0)
 	{
 		n_read += n_bytes;
-		round_list = find_tags_by_name (buf, important_tags);
+		round_list = find_tags_by_name (buf, important_tags, NULL);
 		merge_lists (the_list, round_list);	
+	/*	print_all_tags (the_list);*/
 	}
 
+	print_all_tags (the_list);
 	return the_list;	
 }
 
@@ -130,7 +136,7 @@ end_quote (char *text)
  * the content of the html tag (plain text displayed on the webpage) 
  * as well as the point in the text where the tag ends. */
 struct html_tag *
-parse_tag (const char *tag, char **endpoint)
+parse_tag (const char *tag, char **endpoint, char **trailing_tag)
 {
 	char buf[BUFSIZ];
 	struct html_tag *ret = calloc (1, sizeof (struct html_tag));
@@ -139,33 +145,55 @@ parse_tag (const char *tag, char **endpoint)
 	char *content;
 	char *end;
 	char *ws;
+	char *second_buf;
+	char *end_tag;
 	int has_attributes;
 	char *start;
 	if (!tag) return NULL;
-	start = strchr (tag, '<');
+	start = strchr (tag, '<'); /* Start of the next tag within the text */
 
-	if (start == NULL)
+	if (start == NULL) /* Did not find any possible HTML tags */
 		return NULL;
 
-	end = strchr (start, '>');	
+	end = strchr (start, '>'); /* If only we were parsing XHTML */
+	if (!end) 
+	{
+		*endpoint = *endpoint + strlen (*endpoint);
+		return NULL;
+	}
+	/*if (!end)  TODO: Find a way to load more hypertext into the buffer. We have the file descriptor
+					as a global, which will come in handy 
+	{
+		second_buf = calloc (BUFSIZ + 1, sizeof (char));
+		strncpy (second_buf, start, strlen (start));
+		if (read (options.sock, second_buf + strlen (start), BUFSIZ - strlen (start)) <= 0)
+		{
+			*endpoint = NULL;
+			return NULL;
+		}	
+		start = second_buf;	
+		end = strchr (second_buf, '>');
+	} */
 	ws = strchr (start, ' ');
 	if (ws < end)
 	{
 		char *temp = ws;
 		SKIP_WS(temp);
+
+		/* The end of the name will be at the beginning of the whitespace. If the whitespace was simply between
+			the name and the end of the tag, we should ignore the whitespace  */
 		if (*temp != '>')
+		{
 			has_attributes = 1;
-	
-		end = ws; /* The end of the name will be at the beginning of the whitespace */
+			end = ws; 
+		}
 	}
 	
-	/* Otherwise, there must be no attributes and the name will end where the character '>'
- 		is found */
-
 	memset (buf, 0, sizeof (buf));
 	strncpy (buf, start + 1, end - start - 1);
 	name = strdup (buf);
 	ret->name = name;
+	end_tag = tag_end (name);
 
 	while (has_attributes) /* attributes should begin after the end of the name */
 	{
@@ -184,20 +212,21 @@ parse_tag (const char *tag, char **endpoint)
 		end++; /* Skip the '=' */
 	
 		if (*end++ != '"') goto err;
-	
+		
+		/* Find the content */	
 		start = end;
 		end = end_quote (end);
 
 		attr_value = malloc (end - start + 1);	
 		strncpy (attr_value, start, end - start);
-		buf[end - start] = '\0';
+		attr_value[end - start] = '\0';
 
 		hash_table_put (attributes, attr_name, attr_value);
 	
 		free (attr_name);
 		free (attr_value);
 	
-		if (*++end == '>')
+		if (*(++end) == '>')
 			break;
 			
 		/* We have to find the end of the name-value pair by finding the second double quotation mark.
@@ -214,30 +243,34 @@ parse_tag (const char *tag, char **endpoint)
 	if (!(*start)) goto err;	
 	else if (*start == '<')
 	{
-		ret->content = strdup ("");
-		end = start;
+		/* See if we are at the end. We may have found a nested tag,
+ 			don't assume we are the end just yet. */
+		if (*(start + 1) == '/' && strncmp (start + 2, name, strlen (name)) == 0)
+		{
+			ret->content = strdup ("");
+			end = start;
+		}
 	}
 	else
 	{	
-		end = strchr (start, '<');
-		if (!end) goto err;
-	
-		content = malloc (end - start + 1);
-		strncpy (content, start, end - start);
-		content[end - start] = '\0';
-	
+		end = strstr (start, end_tag);
+		if (!end) content = strdup ("");
+		else	
+		{
+			content = malloc (end - start + 1);
+			strncpy (content, start, end - start);
+			content[end - start] = '\0';
+		}
+
 		ret->content = content;
 	}	
 
-	end++;
-	if (*end++ != '/' || strncmp (end, name, strlen (name)) != 0 || end[strlen (name)] != '>') goto err;
-	
-	*endpoint = (end + strlen (name) + 1); /* Indicate where in the text the tag ended */
+	 /* if (end && (strncmp (end, end_tag, strlen (end_tag)) != 0)) goto err; */
+	*endpoint = end ? (end + strlen (tag_end (name) + 1)) : NULL; /* Indicate where in the text the tag ended */
 	
 	return ret;
 
 	err:
-		fprintf (stderr, "Doesn't look like an HTML tag!\n");
 		return NULL;
 }
 
@@ -252,7 +285,7 @@ get_all_tags (char *text)
 	char *cur = text, *next;
 	do
 	{
-		struct html_tag *t = parse_tag (cur, &next);
+		struct html_tag *t = parse_tag (cur, &next, NULL);
 		html_tag_list_add (tags, t);	
 	}
 	while (*(cur = next));
@@ -298,7 +331,7 @@ int ptr_comp (const void *c1, const void *c2)
  * After writing it and having it work without a huge amount
  * of debugging, I feel like a master. */
 struct html_tag_list *
-find_tags_by_name (char *text, char **names)
+find_tags_by_name (char *text, char **names, char *leftover)
 {
 	struct html_tag_list *full_list = html_tag_list_init (NULL); /* List that will hold all tags in order */
 	int i, n_names = n_strings (names);
@@ -324,16 +357,14 @@ find_tags_by_name (char *text, char **names)
 				if (all_false (finished, n_names)) /* Check if there are any more attributes to find */
 					break;
 			}
-		
 		}
-		
-		/* Sort the tags by the order in which they appear in the text,
-			then add them according to that order */	
+
 		qsort ((void *) &curs, n_names, sizeof (char *), ptr_comp);
 		for (i = 0; i < n_names; i++)
 		{
-			struct html_tag *tag = parse_tag (curs[i], &next[i]);
+			struct html_tag *tag = parse_tag (curs[i], &next[i], NULL);
 			html_tag_list_add (full_list, tag);	
+			/* print_all_tags (full_list); */
 			curs[i] = next[i];
 		}	
 	}
@@ -356,7 +387,7 @@ find_all_tags (char *text, char *name)
 		if (!p) 
 			break;
 
-		t = parse_tag (p, &next);
+		t = parse_tag (p, &next, NULL);
 		html_tag_list_add (list, t);	
 		p = next;
 	}

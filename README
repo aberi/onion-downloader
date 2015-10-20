@@ -1,1 +1,54 @@
+TODO: 
+	If we can't find the end of the tag, buffer the input so that we will be able to complete the tag.
+Also, when we have a nested tag, it won't understand that there is in fact content within the tag
+if we tell the parser that there must be some content between the beginning and end.
 
+Basically, you have to understand the rules a little better and implement them for various cases.
+This wasn't supposed to be easy. But yes, it's the kind of thing you need many hours to be able
+to make progress on. So stay in tonight and work.
+
+Another case that you haven't considered: When there are no quotes around the value
+of an attribute (i.e. a href=mailto.... )
+
+Writing a parser just seems like an exercise in futility. See if you can just
+find a library to do the work for you. I really don't think it's worth the trouble.
+As interesting as it would be to write practically the entire program from the ground
+up, you should realize that if you weren't focused on a parser, you could be easily
+implementing recursion and varying recursion depths, prequisites, HTTPS/SSL, fixing redirection,
+etc. That's what will make this program legitimately interesting (the ability to download
+files just isn't that important)
+
+Another case we didn't consider: The value of the attribute is NULL i.e. the empty string
+
+Add support for nested tags!!! We are almost there; we just need to understand the problem
+very well.
+
+Another case to consider: Usage of single quotes rather than double quotes!!!
+That's what is causing the problem right now when attempting to parse UMD CS homepage
+
+LITERALLY found a case where there is one single quote and one double quote used.
+LITERALLY.
+
+LITERALLY A CASE where the quotes look like \\\"
+LITERALLY
+
+LITERALLY a situation where tags are written in all caps
+
+LITERALLY a case with a newline directly before the href value (after the = sign)
+
+LITERALLY a case with a space after the = ... jesus christ there are too many possibilities
+
+There are actually a ton of websites (i.e. those with really clean, XML-like HTML) that
+the parser can parse the a href's of. Account for the corner cases and you will be well
+on your way to recursion.
+
+Tomorrow you should BUST OUT that 330 project and use the rest of the week to work
+on this project as well as begin studying for Putnam (Spivak, but also work on 
+your group theory, number theory, and linear algebra, which are conveniently the
+three somewhat advanced (meaning past high school calculus and 200-level ODE) 
+topics I've studied. We'll be getting into real analysis as well. When
+410 rolls around, you'll have no reason to be intimidated).
+
+Email Nagaraj Uncle about research possibilities. Go to a professor's office
+hours with an interesting problem once you've figured out a few problems
+to work on.

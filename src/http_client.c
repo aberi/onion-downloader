@@ -27,6 +27,8 @@
 
 static char *optstring = "Rm:o:Op:r";
 
+static char *important_tags[] = {"a", NULL};
+
 struct opt options;
 
 /* Make an argument processing function to begin with.
@@ -229,7 +231,7 @@ main(int argc, char *argv[])
 
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
-		sock = create_and_bind_tcp_socket (&client);
+		options.sock = sock = create_and_bind_tcp_socket (&client);
 		resolve_host (u.host, &server, HTTP_PORT);
 	
 		if (connect_to_ip (sock, &server) < 0)
@@ -251,6 +253,9 @@ main(int argc, char *argv[])
 			means we don't have to worry about the output file after this has been handled. In the case
 			of a redirection, the new file will overwrite the old one. TODO: Handle the case where
 			server returns status 4xx.  */
+	
+		/* Another note: This seems to singlehandedly cause the program to slow down more than
+ 			is desirable */
 		response_content = read_response (sock, buf, sizeof (buf));
 		response_body = response_content->body;
 
@@ -269,8 +274,12 @@ main(int argc, char *argv[])
 		switch (resp->status)
 		{
 			char *location, *fmt;
+			struct html_tag_list *the_list;
 			case HTTP_OK:
-				return 0;
+					printf ("%s\n", response_body);
+					the_list = find_tags_by_name (response_body, important_tags, NULL);
+					print_all_tags (the_list);
+					return 0;
 			case HTTP_MOVED:
 			case HTTP_FOUND:
 				if ((location = hash_table_get (resp->headers, "Location")))

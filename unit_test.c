@@ -35,21 +35,21 @@ test_parse (void)
 	tag = build_html_tag ("a", table, "UMD CS Homepage");
 
 	printf ("%s\n", tag);
-	parse_tag (tag, &end);
+	parse_tag (tag, &end, NULL);
 
 	hash_table_remove (table, "href");
 	hash_table_put (table, "src", "http://cs.umd.edu/icon.png");
 	tag = build_html_tag ("img", table, "");
 
 	printf ("%s\n", tag);
-	parse_tag (tag, &end);
+	parse_tag (tag, &end, NULL);
 
 	hash_table_put (table, "href", "http://cs.umd.edu/index.html");
 	tag = build_html_tag ("img", table, "");
 
 	printf ("%s\n", tag);
 	
-	parse_tag (tag, &end);
+	parse_tag (tag, &end, NULL);
 
 	printf ("\n\n");
 	
@@ -159,34 +159,34 @@ test_parse_2 (void)
 {
 	char *end;
 	char *test = "<img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\"></img>";
-	struct html_tag *t = parse_tag (test, &end);
+	struct html_tag *t = parse_tag (test, &end, NULL);
 	struct html_tag_list *l = html_tag_list_init (t);
 	printf ("\"%s\"\n", test);
 	print_tag (t);
 	free (t);
 
 	test = "<img src=\"http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf\" href=\"http://cs.umd.edu\"></img>";
-	t = parse_tag (test, &end);
+	t = parse_tag (test, &end, NULL);
 	printf ("\"%s\"\n", test);
 	print_tag (t);
 	free (t);
 
 	test = "<img src=\"http://linux.die.net/man/3/gethostbyname\" href=\"http://cs.umd.edu\"></img>";
-	t = parse_tag (test, &end);
+	t = parse_tag (test, &end, NULL);
 	printf ("\"%s\"\n", test);
 	print_tag (t);
 	free (t);
 
 	/* Shouldn't work (as in, the parser should recognize that this is not valid HTML) */
 	test = "<img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast<img>";
-	t = parse_tag (test, &end);
+	t = parse_tag (test, &end, NULL);
 	printf ("\"%s\"\n", test);
 	print_tag (t);
 	free (t);
 	
 	test = "<img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img><a href=\"aberi.github.io\">\
 </a><img src=\"http://cs.umd.edu/icon.png\" href=\"http://cs.umd.edu\">Testing to see if I'm a beast</img>";
-	t = parse_tag (test, &end);
+	t = parse_tag (test, &end, NULL);
 	printf ("\"%s\"\n", test);
 	print_tag (t);
 	
@@ -244,7 +244,7 @@ test_find_tag_among_other (void)
 	
 	printf ("\n\nTRYING THE DIFFICULT ALGORITHM\n\n");
 		
-	htl = find_tags_by_name (test, names);
+	htl = find_tags_by_name (test, names, NULL);
 	print_all_tags (htl);
 	
 	return 0;

@@ -305,7 +305,7 @@ read_response (int sock, char *buf, int len)
 		int current_length = n_read;
 		char *brk;
 		if (is_content)
-			write (options.output_fd, buf, n_bytes);	
+			write (options.output_fd, buf, n_bytes);
 		else
 		{
 			brk = strstr (buf, "\r\n\r\n");
