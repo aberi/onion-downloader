@@ -27,6 +27,8 @@
 
 static char *optstring = "Rm:o:Op:r";
 
+static struct hash_table *dl_url_file_map;
+
 struct opt options;
 
 /* Make an argument processing function to begin with.
@@ -151,8 +153,8 @@ usage (void)
 }
 
 
-char *names[] = {"Host", "User-Agent", "Connection", NULL};
-char *values[] = {"www.google.com", "Wget-1.16 (linux-gnu)", "Keep-Alive", NULL};
+char *names[] = {"Host", "User-Agent", "Connection", "Compression", NULL};
+char *values[] = {"www.google.com", "Wget-1.16 (linux-gnu)", "keep-alive", "gzip", NULL};
 
 struct hash_table *
 fill_header_table (char **names, char **values)
@@ -276,6 +278,8 @@ main(int argc, char *argv[])
 		mkdir (u.host, 0755);
 		chdir (u.host);
 	}
+	
+	dl_url_file_map = hash_table_new (101);
 
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
@@ -311,7 +315,7 @@ main(int argc, char *argv[])
 	
 							for (k = 0; k < the_list->count; k++)
 							{
-								if (hrefs[k])
+								if (hrefs[k] && strncmp (hrefs, "mailto", 6) != 0)
 								{
 									char *new_url;
 									if (is_absolute (hrefs[k]))
@@ -323,7 +327,7 @@ main(int argc, char *argv[])
 									}									
 									else if (is_relative (hrefs[k]))
 									{
-										fprintf (stderr, "The URL directory is %s\n", base);
+										/* fprintf (stderr, "The URL directory is %s\n", base); */
 										new_url = malloc (strlen (base) + strlen (hrefs[k]) + 1);
 										strcpy (new_url, base);
 										strcpy (new_url + strlen (base), hrefs[k]);

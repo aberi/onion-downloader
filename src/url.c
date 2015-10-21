@@ -42,13 +42,33 @@ static char buf[MAX_URL_LENGTH];
 #endif
 
 char *
+create_new_url_absolute_path (char *host, char *path)
+{
+	char *new_url = malloc (strlen (host) + strlen (path + 1));
+	strcpy (new_url, host);
+	strcpy (new_url + strlen (host), path);
+	new_url[strlen (host) + strlen (path)] = '\0';
+	return new_url;
+}
+
+char *
+create_new_url_relative_path (char *base, char *path)
+{
+	char *new_url = malloc (strlen (base) + strlen (path) + 1);
+	strcpy (new_url, base);
+	strcpy (new_url + strlen (base), path);
+	new_url[strlen (base) + strlen (path)] = '\0';
+	return new_url;
+}
+
+char *
 get_url_directory (struct url *url)
 {
 	char *end = skip_dirs (url->full_url);
 	char *ret;
 	if (strcmp (end, url->host) == 0)
 	{
-		ret = malloc (url->full_url + 2);
+		ret = malloc (strlen (url->full_url) + 2);
 		strcpy (ret, url->full_url);
 		ret[ strlen (url->full_url) ] = '/';
 		return ret;
@@ -70,7 +90,7 @@ not_outgoing (const char *link)
 int 
 is_relative (const char *link)
 {
-	return *link != ' ' 
+	return link && *link != ' ' 
 			&& *link != '/'  /* absolute path that is located on the same remote host */
 			&& strncmp (link, "http", 4) != 0; /* Outgoing link to new host */
 }
@@ -78,25 +98,25 @@ is_relative (const char *link)
 int
 is_absolute (const char *link)
 {
-	return *link == '/';
+	return link && *link == '/';
 }
 
 int
 is_outgoing (const char *link)
 {
-	return strncmp (link, "http", 4) == 0;
+	return link && strncmp (link, "http", 4) == 0;
 }
 
 int
 is_outgoing_http (const char *link)
 {
-	return strncmp (link, "http:", 5) == 0;
+	return link && strncmp (link, "http:", 5) == 0;
 }
 
 int
 is_outgoing_https (const char *link)
 {
-	return strncmp (link, "https:", 5) == 0;
+	return link && strncmp (link, "https:", 5) == 0;
 }
 
 int
