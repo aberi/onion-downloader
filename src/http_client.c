@@ -153,8 +153,8 @@ usage (void)
 }
 
 
-char *names[] = {"Host", "User-Agent", "Connection", "Compression", NULL};
-char *values[] = {"www.google.com", "Wget-1.16 (linux-gnu)", "keep-alive", "gzip", NULL};
+char *names[] = {"Host", NULL};
+char *values[] = {"www.google.com", NULL};
 
 struct hash_table *
 fill_header_table (char **names, char **values)
@@ -304,18 +304,12 @@ main(int argc, char *argv[])
 						
 							the_list = get_links_from_file (new_fd);
 
-							fprintf (stderr, "\n***************ABSOLUTE LINKS***************\n");
-							print_all_attribute (the_list, "href", is_absolute);
-
-							fprintf (stderr, "\n***************RELATIVE LINKS***************\n");
-							print_all_attribute (the_list, "href", is_relative);
-
 							hrefs = get_all_attribute (the_list, "href", not_outgoing);
 							base = get_url_directory (&u);
 	
 							for (k = 0; k < the_list->count; k++)
 							{
-								if (hrefs[k] && strncmp (hrefs, "mailto", 6) != 0)
+								if (hrefs[k] != 0)
 								{
 									char *new_url;
 
@@ -330,7 +324,9 @@ main(int argc, char *argv[])
 									close (sock);
 
 									if ( file_exists (u.path) != 1)
-									{
+									{   /* Eventually we want to be using persistent connections instead
+												of reconnecting for every new file. This will be especially
+												important over secure connections to reduce latency. */
 										sock = make_connection (&u, &client, &server);
 										download_file (sock, &u, method, headers, &resp);
 									}
