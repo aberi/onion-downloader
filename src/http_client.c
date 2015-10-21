@@ -318,24 +318,17 @@ main(int argc, char *argv[])
 								if (hrefs[k] && strncmp (hrefs, "mailto", 6) != 0)
 								{
 									char *new_url;
+
 									if (is_absolute (hrefs[k]))
-									{
-										new_url = malloc (strlen (u.host) + strlen (hrefs[k]) + 1);
-										strcpy (new_url, u.host);
-										strcpy (new_url + strlen (u.host), hrefs[k]);
-										new_url[strlen (u.host) + strlen (hrefs[k])] = '\0';
-									}									
+										new_url = create_new_url_absolute_path (u.host, hrefs[k]);
 									else if (is_relative (hrefs[k]))
-									{
-										/* fprintf (stderr, "The URL directory is %s\n", base); */
-										new_url = malloc (strlen (base) + strlen (hrefs[k]) + 1);
-										strcpy (new_url, base);
-										strcpy (new_url + strlen (base), hrefs[k]);
-										new_url[strlen (base) + strlen (hrefs[k])] = '\0';
-									}
+										new_url = create_new_url_relative_path (base, hrefs[k]);
+
 									fprintf (stderr, "New url is %s\n", new_url);
+
 									parse_url (new_url, &u);
 									close (sock);
+
 									if ( file_exists (u.path) != 1)
 									{
 										sock = make_connection (&u, &client, &server);
