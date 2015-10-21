@@ -200,6 +200,43 @@ create_output_file (char *url_path)
 	free (temp);	
 }
 
+struct content *
+download_file (int sock, struct url *url, char *method, struct hash_table *headers, struct response **response)
+{
+	struct request *req;	
+	char buf[BUFSIZ];
+	struct content *response_content;
+	struct response *resp = malloc (sizeof (struct response));
+
+	create_output_file (url->path);
+
+	req = make_request (url, headers, method);
+	send_request (sock, req);
+
+	response_content = read_response (sock, buf, sizeof (buf));
+
+	parse_response (response_content, resp);
+	*response = resp;	
+
+	return response_content;
+}
+
+int
+make_connection (struct url *url, struct sockaddr_in *client, struct sockaddr_in *server)
+{
+	int sock;
+	resolve_host (url->host, server, HTTP_PORT);
+
+	options.sock = sock = create_and_bind_tcp_socket (client);
+	if (connect_to_ip (sock, server) < 0) 
+	{
+		perror ("Unable to connect to the server");
+		exit (1);	
+	}
+		
+	return sock;
+}
+
 int 
 main(int argc, char *argv[])
 {
@@ -225,52 +262,14 @@ main(int argc, char *argv[])
 
 	init_opt (argc, argv, optstring);
 	parse_url (options.url, &u);
+		
+	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
+	hash_table_put (headers, "Host", u.host);		
 
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
-		resolve_host (u.host, &server, HTTP_PORT);
-
-		options.sock = sock = create_and_bind_tcp_socket (&client);
-		if (connect_to_ip (sock, &server) < 0) 
-		{
-			perror ("Unable to connect to the server");
-			exit (1);	
-		}
-
-		headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
-		hash_table_put (headers, "Host", u.host);		
-
-		/* Always create requests from a struct hash_table. Don't use a pair of char **; we can't
- 			easily insert and remove from a pair of char ** like we can with a struct hash_table */
-	request:
-		if (options.output_fd < 0)
-			create_output_file (u.path);
-
-		req = make_request (&u, headers, method);
-		send_request (sock, req);
-
-		/* I have written read_response so that it will write to the output file immediately after each
- 			read call that reads actual content (headers will not be written to the output file). That
-			means we don't have to worry about the output file after this has been handled. In the case
-			of a redirection, the new file will overwrite the old one. TODO: Handle the case where
-			server returns status 4xx.  */
-	
-		/* Another note: This seems to singlehandedly cause the program to slow down more than
- 			is desirable */
-		response_content = read_response (sock, buf, sizeof (buf));
-		response_body = response_content->body;
-
-		/* Compile the response headers into a hash table and get the status (server response code) */	
-		parse_response (response_content, resp);
-
-		/* Good for debugging purposes */
-		if (options.show_server_response)
-			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
-
-		/* Good for debugging purposes */
-		if (options.print_content && options.output_fd != STDOUT_FILENO)
-			write (STDOUT_FILENO, response_body, response_content->len);  /* Don't do this, just write the content
-																			to the file during parsing */
+		sock = make_connection (&u, &client, &server);
+		response_content = download_file (sock, &u, method, headers, &resp);
 
 		switch (resp->status)
 		{
@@ -278,35 +277,34 @@ main(int argc, char *argv[])
 			struct html_tag_list *the_list;
 			int new_fd;
 			case HTTP_OK:
-					close (options.output_fd);
-					if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
+					if (options.recursive)
 					{
-						the_list = get_links_from_file (new_fd);
-						/* print_all_tags (the_list); */
-						printf ("\n***********RELATIVE LINKS***********\n");
-						print_all_attribute (the_list, "href", is_relative);
-						printf ("\n***********ABSOLUTE LINKS***********\n");
-						print_all_attribute (the_list, "href", is_absolute);
-						printf ("\n***********OUTGOING HTTP LINKS***********\n");
-						print_all_attribute (the_list, "href", is_outgoing_http);
-						printf ("\n***********OUTGOING HTTPS LINKS***********\n");
-						print_all_attribute (the_list, "href", is_outgoing_https);
+						close (options.output_fd);
+						if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
+						{
 	
-						if (options.recursive) /* If recursion is on, enqueue the relative links and download them */
-						{	
 							char **hrefs;
 							int k;
-							recursion_depth--;
+
+							the_list = get_links_from_file (new_fd);
 							hrefs = get_all_attribute (the_list, "href", is_absolute);
 	
-							printf ("\nList of links\n\n");
-		
 							for (k = 0; k < the_list->count; k++)
+							{
 								if (hrefs[k])
-									printf ("%s\n", hrefs[k]);
+								{
+									char *new_url = malloc (strlen (u.host) + strlen (hrefs[k]) + 1);
+									strcpy (new_url, u.host);
+									strcpy (new_url + strlen (u.host), hrefs[k]);
+									new_url[strlen (u.host) + strlen (hrefs[k])] = '\0';
+									parse_url (new_url, &u);
+									sock = make_connection (&u, &client, &server);
+									download_file (sock, &u, method, headers, &resp);
+								}
+							}	
 						}
 					}
-					return 0;
+				break;
 			case HTTP_MOVED:
 			case HTTP_FOUND:
 				if ((location = hash_table_get (resp->headers, "Location")))

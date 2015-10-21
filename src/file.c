@@ -58,10 +58,7 @@ make_dirs (char *filename)
 
 	if ((ret = directory_exists (local_filename)) != NO_EXIST)
 	{
-		/*if (ret == DIR_EXISTS)
-			fprintf (stderr, "Found directory %s\n", local_filename);
-		else
-			fprintf (stderr, "Found file %s\n", local_filename); */
+		fprintf (stderr, "File %s exists\n", local_filename);
 		return ret;	
 	}
 	
@@ -84,14 +81,37 @@ make_dirs (char *filename)
 		/* fprintf (stderr, "Trying to create %s\n", buf); */
 
 		if (mkdir (buf, 0755) < 0)
-			if (errno != EEXIST) /* Don't exit just because some of the prequisites already exist */
-				return NO_EXIST;
+		{
+			fprintf (stderr, "Couldn't create the file\n");
+			if (errno == EEXIST)
+			{
+				char *cmd = malloc (5 + strlen (local_filename) + 1);		
+				sprintf (cmd, "rm ./%s", local_filename);
+				system (cmd);
+				free (cmd);
+				if (mkdir (local_filename, 0755) < 0)
+					return NO_EXIST;	
+			}
+		}
 	}
 	
 	/* All the prerequisites now exist, so create the original directory name that was passed */
 	/*fprintf (stderr, "Trying to create %s\n", local_filename); */
 	if (mkdir (local_filename, 0755) < 0)
-		return NO_EXIST;				
+	{
+		fprintf (stderr, "Couldn't create the file\n");
+		if (errno == EEXIST)
+		{
+			char *cmd = malloc (5 + strlen (local_filename) + 1);		
+			sprintf (cmd, "rm ./%s", local_filename);
+			system (cmd);
+			free (cmd);
+			if (mkdir (local_filename, 0755) < 0)
+				return NO_EXIST;	
+			else
+				return DIR_EXISTS;
+		}
+	}
 	
 	return DIR_EXISTS;
 }
