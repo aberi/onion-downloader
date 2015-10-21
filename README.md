@@ -13,9 +13,13 @@ parser fails, sometimes there will be a huge memory leak, so be ready to kill th
 downloading one of these sites (a GB of memory fills up in a second or so). cs.umd.edu can be very slow.
 
 	ondl http://www.aes.org -r # downloads www.aes.org and saves it as index.html. Downloads all links found within the homepage that are on the host www.aes.org
+	
 	ondl http://hackduke.org -r --show-response # download all the links on the page + show what response the server gave us (e.g. connection type, cookies, etc.)
+	
 	ondl http://cs.umd.edu/index.php --output-file=index.html # save as ./index.html instead of ./index.php
+	
 	ondl http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf # saves output file to ./hwk1.pdf
+	
 	ondl http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf -r # saves output file to ./cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf
 
 
