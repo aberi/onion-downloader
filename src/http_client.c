@@ -266,6 +266,9 @@ main(int argc, char *argv[])
 	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
 	hash_table_put (headers, "Host", u.host);		
 
+	mkdir (u.host, 0755);
+	chdir (u.host);
+
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
 		sock = make_connection (&u, &client, &server);
@@ -287,16 +290,29 @@ main(int argc, char *argv[])
 							int k;
 
 							the_list = get_links_from_file (new_fd);
-							hrefs = get_all_attribute (the_list, "href", is_absolute);
+							hrefs = get_all_attribute (the_list, "href", not_outgoing);
 	
 							for (k = 0; k < the_list->count; k++)
 							{
 								if (hrefs[k])
 								{
-									char *new_url = malloc (strlen (u.host) + strlen (hrefs[k]) + 1);
-									strcpy (new_url, u.host);
-									strcpy (new_url + strlen (u.host), hrefs[k]);
-									new_url[strlen (u.host) + strlen (hrefs[k])] = '\0';
+									char *new_url;
+									if (is_absolute (hrefs[k]))
+									{
+										new_url = malloc (strlen (u.host) + strlen (hrefs[k]) + 1);
+										strcpy (new_url, u.host);
+										strcpy (new_url + strlen (u.host), hrefs[k]);
+										new_url[strlen (u.host) + strlen (hrefs[k])] = '\0';
+									}									
+									else if (is_relative (hrefs[k]))
+									{
+										char *directory = get_url_directory (&u);		
+										fprintf (stderr, "The URL directory is %s\n", directory);
+										new_url = malloc (strlen (directory) + strlen (hrefs[k]) + 1);
+										strcpy (new_url, directory);
+										strcpy (new_url + strlen (directory), hrefs[k]);
+										new_url[strlen (directory) + strlen (hrefs[k])] = '\0';
+									}
 									parse_url (new_url, &u);
 									sock = make_connection (&u, &client, &server);
 									download_file (sock, &u, method, headers, &resp);
@@ -304,7 +320,7 @@ main(int argc, char *argv[])
 							}	
 						}
 					}
-				break;
+			return 0;
 			case HTTP_MOVED:
 			case HTTP_FOUND:
 				if ((location = hash_table_get (resp->headers, "Location")))

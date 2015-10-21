@@ -41,6 +41,31 @@ static char buf[MAX_URL_LENGTH];
 #define DIR_PERMS 0755
 #endif
 
+char *
+get_url_directory (struct url *url)
+{
+	char *end = skip_dirs (url->full_url);
+	char *ret;
+	if (strcmp (end, url->host) == 0)
+	{
+		ret = malloc (url->full_url + 2);
+		strcpy (ret, url->full_url);
+		ret[ strlen (url->full_url) ] = '/';
+		return ret;
+	}
+	ret = malloc ((end - url->full_url) + 1);
+
+	strncpy (ret, url->full_url, end - url->full_url);
+	return ret;
+}
+
+
+int
+not_outgoing (const char *link)
+{
+	return is_relative (link) || is_absolute (link);
+}
+
 /* Assume for now that we never encounter any FTP links */
 int 
 is_relative (const char *link)

@@ -35,6 +35,8 @@ typedef struct url {
 	struct url *next; /* We will be using URLs in lists quite often. This field may or may not be used */
 } url_t;
 
+char *get_url_directory (struct url *);
+int not_outgoing (const char *);
 int is_relative (const char *);
 int is_absolute (const char *);
 int is_outgoing (const char *);
