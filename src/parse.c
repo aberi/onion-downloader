@@ -214,7 +214,9 @@ parse_tag (const char *tag, char **endpoint, char **trailing_tag)
 		/* Find the content */	
 		start = end;
 		end = end_quote (end);
-
+		
+		if (!end) goto err;
+		
 		attr_value = malloc (end - start + 1);	
 		strncpy (attr_value, start, end - start);
 		attr_value[end - start] = '\0';

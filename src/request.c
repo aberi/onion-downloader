@@ -328,7 +328,6 @@ read_response (int sock, char *buf, int len)
 
 		/*fprintf (stderr, "%s\n", buf);	 */
 	
-		response_body[n_read] = '\0';
 		memset (buf, 0, len);
 	}
 
