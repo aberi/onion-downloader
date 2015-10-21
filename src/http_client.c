@@ -266,8 +266,11 @@ main(int argc, char *argv[])
 	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
 	hash_table_put (headers, "Host", u.host);		
 
-	mkdir (u.host, 0755);
-	chdir (u.host);
+	if (options.recursive)
+	{
+		mkdir (u.host, 0755);
+		chdir (u.host);
+	}
 
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
@@ -277,20 +280,29 @@ main(int argc, char *argv[])
 		switch (resp->status)
 		{
 			char *location, *fmt;
+			struct url cur, *current_url = &cur;
 			struct html_tag_list *the_list;
 			int new_fd;
 			case HTTP_OK:
+
 					if (options.recursive)
 					{
 						close (options.output_fd);
 						if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
 						{
-	
-							char **hrefs;
+							char **hrefs, *base;
 							int k;
-
+						
 							the_list = get_links_from_file (new_fd);
+
+							fprintf (stderr, "\n***************ABSOLUTE LINKS***************\n");
+							print_all_attribute (the_list, "href", is_absolute);
+
+							fprintf (stderr, "\n***************RELATIVE LINKS***************\n");
+							print_all_attribute (the_list, "href", is_relative);
+
 							hrefs = get_all_attribute (the_list, "href", not_outgoing);
+							base = get_url_directory (&u);
 	
 							for (k = 0; k < the_list->count; k++)
 							{
@@ -306,13 +318,13 @@ main(int argc, char *argv[])
 									}									
 									else if (is_relative (hrefs[k]))
 									{
-										char *directory = get_url_directory (&u);		
-										fprintf (stderr, "The URL directory is %s\n", directory);
-										new_url = malloc (strlen (directory) + strlen (hrefs[k]) + 1);
-										strcpy (new_url, directory);
-										strcpy (new_url + strlen (directory), hrefs[k]);
-										new_url[strlen (directory) + strlen (hrefs[k])] = '\0';
+										fprintf (stderr, "The URL directory is %s\n", base);
+										new_url = malloc (strlen (base) + strlen (hrefs[k]) + 1);
+										strcpy (new_url, base);
+										strcpy (new_url + strlen (base), hrefs[k]);
+										new_url[strlen (base) + strlen (hrefs[k])] = '\0';
 									}
+									fprintf (stderr, "New url is %s\n", new_url);
 									parse_url (new_url, &u);
 									sock = make_connection (&u, &client, &server);
 									download_file (sock, &u, method, headers, &resp);
