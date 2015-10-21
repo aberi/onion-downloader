@@ -19,6 +19,7 @@ typedef enum existence
 	NO_EXIST
 } exist_t;
 
+int file_exists (char *);
 exist_t directory_exists(char *dirname);
 int create_file (char *filename);
 exist_t make_dirs (char *filename);

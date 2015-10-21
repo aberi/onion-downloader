@@ -218,6 +218,11 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 	parse_response (response_content, resp);
 	*response = resp;	
 
+	if (options.show_server_response)
+			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
+	
+	close (options.output_fd);
+
 	return response_content;
 }
 
@@ -326,8 +331,12 @@ main(int argc, char *argv[])
 									}
 									fprintf (stderr, "New url is %s\n", new_url);
 									parse_url (new_url, &u);
-									sock = make_connection (&u, &client, &server);
-									download_file (sock, &u, method, headers, &resp);
+									close (sock);
+									if ( file_exists (u.path) != 1)
+									{
+										sock = make_connection (&u, &client, &server);
+										download_file (sock, &u, method, headers, &resp);
+									}
 								}
 							}	
 						}

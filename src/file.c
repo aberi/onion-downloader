@@ -22,6 +22,24 @@ directory_exists (char *dirname)
 	return NO_EXIST;
 }
 
+int
+file_exists (char *filename)
+{
+	struct stat st;
+	char *local_filename = calloc (2 + strlen (filename) + 1, sizeof (char));
+	strcpy (local_filename, "./");
+	strcpy (local_filename + 2, filename);
+
+	if (stat (local_filename, &st) != -1)
+	{
+		free (local_filename);
+		return ((st.st_mode & S_IFMT) == S_IFREG) ? 1 : 0;
+	}
+
+	free (local_filename);
+	return -1;
+}
+
 int 
 create_file (char *filename)
 {
