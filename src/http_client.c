@@ -284,6 +284,31 @@ http_loop (int sock,
 	}
 }
 
+void
+retrieve_links (int sock, 
+			    struct url *u, 
+			    struct sockaddr_in *client, 
+			    struct sockaddr_in *server, 
+				char *method, 
+				struct hash_table *headers,
+				struct response **resp)
+{
+	int new_fd;
+	struct html_tag_list *the_list;
+	close (options.output_fd);
+	if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
+	{
+		char **hrefs, *base;
+	
+		the_list = get_links_from_file (new_fd);
+
+		hrefs = get_all_attribute (the_list, "href", not_outgoing);
+		base = get_url_directory (u);
+
+		http_loop (sock, u, client, server, the_list, hrefs, base, method, headers, resp);
+	}
+}
+
 int 
 main(int argc, char *argv[])
 {
@@ -340,43 +365,19 @@ main(int argc, char *argv[])
 						if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
 						{
 							char **hrefs, *base;
-							int k;
-						
 							the_list = get_links_from_file (new_fd);
 
 							hrefs = get_all_attribute (the_list, "href", not_outgoing);
 							base = get_url_directory (&u);
 	
-							for (k = 0; k < the_list->count; k++)
-							{
-								if (hrefs[k] && strchr (hrefs[k], '@') == NULL)
-								{
-									char *new_url;
-
-									if (is_absolute (hrefs[k]))
-										new_url = create_new_url_absolute_path (u.host, hrefs[k]);
-									else if (is_relative (hrefs[k]))
-										new_url = create_new_url_relative_path (base, hrefs[k]);
-
-									fprintf (stderr, "New url is %s\n", new_url);
-
-									parse_url (new_url, &u);
-									close (sock);
-
-									if ( file_exists (u.path) != 1)
-									{   /* Eventually we want to be using persistent connections instead
-												of reconnecting for every new file. This will be especially
-												important over secure connections to reduce latency. */
-										sock = make_connection (&u, &client, &server);
-										download_file (sock, &u, method, headers, &resp);
-									}
-								}
-							}	
+							http_loop (sock, &u, &client, &server, the_list, hrefs, base, method, headers, &resp);
 						}
 					}
-			return 0;
+				return 0;
 			case 301:
 			case 302:
+			case 307:
+			case 308:
 				if ((location = hash_table_get (resp->headers, "Location")))
 				{	
 					#ifdef DEBUG
@@ -393,8 +394,12 @@ main(int argc, char *argv[])
 					close (options.output_fd);
 					if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
 					{
+						char **hrefs, *base;
 						the_list = get_links_from_file (options.output_fd);
-			
+						hrefs = get_all_attribute (the_list, "href", not_outgoing);
+						base = get_url_directory (&u);
+
+						http_loop (sock, &u, &client, &server, the_list, hrefs, base, method, headers, &resp);
 						
 					}
 					return 1;
