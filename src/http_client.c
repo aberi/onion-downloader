@@ -264,9 +264,10 @@ http_loop (int sock,
 	int k;
 	for (k = 0; k < the_list->count; k++)
 	{
-		if (hrefs[k] && strchr (hrefs[k], '@') == NULL) /* Avoid downloading "mailto" links */
+		if (hrefs[k] && strchr (hrefs[k], '@') == NULL && strstr (hrefs[k], "://") == NULL) /* Avoid downloading "mailto" links */
 		{
 			char *new_url;
+			char *temp;
 
 			if ( is_absolute (hrefs[k]) )
 				new_url = create_new_url_absolute_path (u->host, hrefs[k]);
@@ -276,7 +277,10 @@ http_loop (int sock,
 
 			fprintf (stderr, "New url is %s\n", new_url);
 
-			parse_url (new_url, u);
+			temp = strdup (new_url);
+			parse_url (temp, u);
+			free (temp);
+
 			close (sock);
 
 			if ( file_exists (u->path) != 1)

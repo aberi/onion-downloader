@@ -201,7 +201,7 @@ parse_url (char *url, url_t *u)
 	char *port_begin, *port_end;
 	char *path_begin, *path_end;
 	int has_protocol = 0;
-	
+		
 	memset (u, 0, sizeof (url_t));
 	protocol_begin = url;
 	protocol_end = strstr (url, "://");	
@@ -226,7 +226,7 @@ parse_url (char *url, url_t *u)
 	}
 	else
 	{
-		host_begin = url;
+		host_begin = strdup (url);
 		u->protocol = strdup ("http");
 	}
 	#ifndef HTTPS_PORT
