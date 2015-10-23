@@ -27,7 +27,7 @@
 
 static char *optstring = "Rm:o:Op:r";
 
-static struct hash_table *dl_url_file_map;
+/* static struct hash_table *dl_url_file_map;*/
 
 struct opt options;
 
@@ -244,6 +244,11 @@ make_connection (struct url *url, struct sockaddr_in *client, struct sockaddr_in
 	return sock;
 }
 
+/* Given a list of hrefs (URL paths), 
+ * download the files created by combining
+ * the host with the appropriate path (this
+ * depends on whether the hrefs/links
+ * are relative or absolute */
 void
 http_loop (int sock, 
 		   struct url *u, 
@@ -259,13 +264,14 @@ http_loop (int sock,
 	int k;
 	for (k = 0; k < the_list->count; k++)
 	{
-		if (hrefs[k] && strchr (hrefs[k], '@') == NULL)
+		if (hrefs[k] && strchr (hrefs[k], '@') == NULL) /* Avoid downloading "mailto" links */
 		{
 			char *new_url;
 
-			if (is_absolute (hrefs[k]))
+			if ( is_absolute (hrefs[k]) )
 				new_url = create_new_url_absolute_path (u->host, hrefs[k]);
-			else if (is_relative (hrefs[k]))
+
+			else if ( is_relative (hrefs[k]) )
 				new_url = create_new_url_relative_path (base, hrefs[k]);
 
 			fprintf (stderr, "New url is %s\n", new_url);
@@ -284,6 +290,9 @@ http_loop (int sock,
 	}
 }
 
+/* Retrieve all the files specified by relative or absolute links
+ * within the downloaded file, i.e., options.output_file should
+ * have already been written to. */
 void
 retrieve_links (int sock, 
 			    struct url *u, 
@@ -313,17 +322,12 @@ int
 main(int argc, char *argv[])
 {
 	char *method = "GET";
-	char *response_body;
 	char buf[BUFSIZ];
 	int sock, num_redirect = 0; /* Socket that is connected to the host and the number of redirections (3xx codes)
 									that have taken place during the current attempt to download a webpage */
-	int recursion_depth;
 	url_t u;
 	
-	struct url_queue *queue = url_queue_init ();
-
 	struct sockaddr_in client, server; /* Addresses of the local and remote host */
-	struct request *req; /* Request to be sent to remote host. Currently must be an HTTP request */  
 	struct response *resp = malloc (sizeof (struct response)); /* Response given by remote host */
 	struct content *response_content; /* File that would be displayed on a web browser. */
 	struct hash_table *headers; 
@@ -344,8 +348,6 @@ main(int argc, char *argv[])
 		chdir (u.host);
 	}
 	
-	dl_url_file_map = hash_table_new (101);
-
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
 		sock = make_connection (&u, &client, &server);
@@ -354,26 +356,12 @@ main(int argc, char *argv[])
 		switch (resp->status)
 		{
 			char *location, *fmt;
-			struct url cur, *current_url = &cur;
-			struct html_tag_list *the_list;
-			int new_fd;
 			case HTTP_OK:
 
 					if (options.recursive)
-					{
-						close (options.output_fd);
-						if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
-						{
-							char **hrefs, *base;
-							the_list = get_links_from_file (new_fd);
+						retrieve_links (sock, &u, &client, &server, method, headers, &resp);	
+					return 0;
 
-							hrefs = get_all_attribute (the_list, "href", not_outgoing);
-							base = get_url_directory (&u);
-	
-							http_loop (sock, &u, &client, &server, the_list, hrefs, base, method, headers, &resp);
-						}
-					}
-				return 0;
 			case 301:
 			case 302:
 			case 307:
@@ -383,37 +371,37 @@ main(int argc, char *argv[])
 					#ifdef DEBUG
 					fprintf (stderr, "New location is %s\n", location); 
 					#endif
+
 					parse_url (location, &u);	
-					/* print_url (&u); */
+					if (options.recursive)
+					{
+						chdir ("..");
+						mkdir (u.host, 0755);
+						chdir (u.host);
+					}
+					hash_table_put (headers, "Host", u.host);
 					create_output_file (u.path); /* Truncate the previous file... we don't want
 					"301 Moved Permanently" showing up at the top of the file */
 					num_redirect++;
 				}
 				else
-				{
-					close (options.output_fd);
-					if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
-					{
-						char **hrefs, *base;
-						the_list = get_links_from_file (options.output_fd);
-						hrefs = get_all_attribute (the_list, "href", not_outgoing);
-						base = get_url_directory (&u);
-
-						http_loop (sock, &u, &client, &server, the_list, hrefs, base, method, headers, &resp);
-						
-					}
-				}
-				break;
-			case HTTP_NOT_FOUND: /* Could rm the output file */
+					return 1;
+				break;	
+					
+			case 400: /* Could rm the output file */
+			case 403:
+			case 404:
 				fmt = "rm %s";
 				memset (buf, 0, sizeof (buf));
 				sprintf (buf, fmt, options.output_file);
 				system (buf);
 				return 1;
 				break;
+
 			default:
 				return 1;
 				break;
+
 		}
 	}
 
