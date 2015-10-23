@@ -154,7 +154,7 @@ usage (void)
 
 
 char *names[] = {"Host", NULL};
-char *values[] = {"www.google.come", NULL};
+char *values[] = {"www.google.com", NULL};
 
 struct hash_table *
 fill_header_table (char **names, char **values)
@@ -360,20 +360,8 @@ main(int argc, char *argv[])
 			case HTTP_OK:
 
 					if (options.recursive)
-					{
-						close (options.output_fd);
-						if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
-						{
-							char **hrefs, *base;
-							the_list = get_links_from_file (new_fd);
-
-							hrefs = get_all_attribute (the_list, "href", not_outgoing);
-							base = get_url_directory (&u);
-	
-							http_loop (sock, &u, &client, &server, the_list, hrefs, base, method, headers, &resp);
-						}
-					}
-				return 0;
+						retrieve_links (sock, &u, &client, &server, method, headers, &resp);	
+					return 0;
 			case 301:
 			case 302:
 			case 307:
@@ -384,26 +372,18 @@ main(int argc, char *argv[])
 					fprintf (stderr, "New location is %s\n", location); 
 					#endif
 					parse_url (location, &u);	
-					/* print_url (&u); */
+					if (options.recursive)
+					{
+						mkdir (u.host, 0755);
+						chdir (u.host);
+					}
+					hash_table_put (headers, "Host", u.host);
 					create_output_file (u.path); /* Truncate the previous file... we don't want
 					"301 Moved Permanently" showing up at the top of the file */
 					num_redirect++;
 				}
 				else
-				{
-					close (options.output_fd);
-					if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
-					{
-						char **hrefs, *base;
-						the_list = get_links_from_file (options.output_fd);
-						hrefs = get_all_attribute (the_list, "href", not_outgoing);
-						base = get_url_directory (&u);
-
-						http_loop (sock, &u, &client, &server, the_list, hrefs, base, method, headers, &resp);
-						
-					}
 					return 1;
-				}
 				break;
 			case 400: /* Could rm the output file */
 			case 403:
