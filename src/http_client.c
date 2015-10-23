@@ -244,6 +244,11 @@ make_connection (struct url *url, struct sockaddr_in *client, struct sockaddr_in
 	return sock;
 }
 
+/* Given a list of hrefs (URL paths), 
+ * download the files created by combining
+ * the host with the appropriate path (this
+ * depends on whether the hrefs/links
+ * are relative or absolute */
 void
 http_loop (int sock, 
 		   struct url *u, 
@@ -259,13 +264,14 @@ http_loop (int sock,
 	int k;
 	for (k = 0; k < the_list->count; k++)
 	{
-		if (hrefs[k] && strchr (hrefs[k], '@') == NULL)
+		if (hrefs[k] && strchr (hrefs[k], '@') == NULL) /* Avoid downloading "mailto" links */
 		{
 			char *new_url;
 
-			if (is_absolute (hrefs[k]))
+			if ( is_absolute (hrefs[k]) )
 				new_url = create_new_url_absolute_path (u->host, hrefs[k]);
-			else if (is_relative (hrefs[k]))
+
+			else if ( is_relative (hrefs[k]) )
 				new_url = create_new_url_relative_path (base, hrefs[k]);
 
 			fprintf (stderr, "New url is %s\n", new_url);
@@ -284,6 +290,9 @@ http_loop (int sock,
 	}
 }
 
+/* Retrieve all the files specified by relative or absolute links
+ * within the downloaded file, i.e., options.output_file should
+ * have already been written to. */
 void
 retrieve_links (int sock, 
 			    struct url *u, 
