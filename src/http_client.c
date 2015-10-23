@@ -27,7 +27,7 @@
 
 static char *optstring = "Rm:o:Op:r";
 
-static struct hash_table *dl_url_file_map;
+/* static struct hash_table *dl_url_file_map;*/
 
 struct opt options;
 
@@ -322,17 +322,12 @@ int
 main(int argc, char *argv[])
 {
 	char *method = "GET";
-	char *response_body;
 	char buf[BUFSIZ];
 	int sock, num_redirect = 0; /* Socket that is connected to the host and the number of redirections (3xx codes)
 									that have taken place during the current attempt to download a webpage */
-	int recursion_depth;
 	url_t u;
 	
-	struct url_queue *queue = url_queue_init ();
-
 	struct sockaddr_in client, server; /* Addresses of the local and remote host */
-	struct request *req; /* Request to be sent to remote host. Currently must be an HTTP request */  
 	struct response *resp = malloc (sizeof (struct response)); /* Response given by remote host */
 	struct content *response_content; /* File that would be displayed on a web browser. */
 	struct hash_table *headers; 
@@ -353,8 +348,6 @@ main(int argc, char *argv[])
 	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
 	hash_table_put (headers, "Host", u.host);		
 	
-	dl_url_file_map = hash_table_new (101);
-
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
 		sock = make_connection (&u, &client, &server);
@@ -363,14 +356,12 @@ main(int argc, char *argv[])
 		switch (resp->status)
 		{
 			char *location, *fmt;
-			struct url cur, *current_url = &cur;
-			struct html_tag_list *the_list;
-			int new_fd;
 			case HTTP_OK:
 
 					if (options.recursive)
 						retrieve_links (sock, &u, &client, &server, method, headers, &resp);	
 					return 0;
+
 			case 301:
 			case 302:
 			case 307:
@@ -380,9 +371,11 @@ main(int argc, char *argv[])
 					#ifdef DEBUG
 					fprintf (stderr, "New location is %s\n", location); 
 					#endif
+
 					parse_url (location, &u);	
 					if (options.recursive)
 					{
+						chdir ("..");
 						mkdir (u.host, 0755);
 						chdir (u.host);
 					}
@@ -393,7 +386,8 @@ main(int argc, char *argv[])
 				}
 				else
 					return 1;
-				break;
+				break;	
+					
 			case 400: /* Could rm the output file */
 			case 403:
 			case 404:
@@ -403,9 +397,11 @@ main(int argc, char *argv[])
 				system (buf);
 				return 1;
 				break;
+
 			default:
 				return 1;
 				break;
+
 		}
 	}
 

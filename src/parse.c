@@ -121,9 +121,18 @@ char *
 end_quote (char *text)
 {
 	char *cur = text;
-	while ((cur = strchr (cur + 1, '"')))
-		if (cur[-1] != '\\') /* I'm not sure if this what it would look like in the actual hypertext */
-			return cur;	
+	if (text[-1] == '"')
+	{
+		while ((cur = strchr (cur, '"')))
+			if (cur[-1] != '\\') /* I'm not sure if this what it would look like in the actual hypertext */
+				return cur;	
+	}
+	else if (text[-1] == '\'')	
+	{
+		while ((cur = strchr (cur, '\'')))
+			if (cur[-1] != '\\') /* I'm not sure if this what it would look like in the actual hypertext */
+				return cur;	
+	}	
 	
 	return NULL;
 }
@@ -143,7 +152,6 @@ parse_tag (const char *tag, char **endpoint, char **trailing_tag)
 	char *content;
 	char *end;
 	char *ws;
-	char *second_buf;
 	char *end_tag;
 	int has_attributes;
 	char *start;
@@ -154,24 +162,8 @@ parse_tag (const char *tag, char **endpoint, char **trailing_tag)
 		return NULL;
 
 	end = strchr (start, '>'); /* If only we were parsing XHTML */
-	if (!end) 
-	{
-		*endpoint = *endpoint + strlen (*endpoint);
-		return NULL;
-	}
-	/*if (!end)  TODO: Find a way to load more hypertext into the buffer. We have the file descriptor
-					as a global, which will come in handy 
-	{
-		second_buf = calloc (BUFSIZ + 1, sizeof (char));
-		strncpy (second_buf, start, strlen (start));
-		if (read (options.sock, second_buf + strlen (start), BUFSIZ - strlen (start)) <= 0)
-		{
-			*endpoint = NULL;
-			return NULL;
-		}	
-		start = second_buf;	
-		end = strchr (second_buf, '>');
-	} */
+	if (!end) goto err;
+
 	ws = strchr (start, ' ');
 	if (ws < end)
 	{
@@ -209,11 +201,13 @@ parse_tag (const char *tag, char **endpoint, char **trailing_tag)
 
 		end++; /* Skip the '=' */
 	
-		if (*end++ != '"') goto err;
+		if (*end != '"' && *end != '\'') goto err;
+	
+		end++;
 		
 		/* Find the content */	
 		start = end;
-		end = end_quote (end);
+		end = end_quote (start);
 		
 		if (!end) goto err;
 		
@@ -222,6 +216,10 @@ parse_tag (const char *tag, char **endpoint, char **trailing_tag)
 		attr_value[end - start] = '\0';
 
 		hash_table_put (attributes, attr_name, attr_value);
+
+		#ifdef DEBUG	
+		fprintf (stderr, "Adding pair %s=%s\n", attr_name, attr_value);
+		#endif
 	
 		free (attr_name);
 		free (attr_value);
@@ -271,6 +269,8 @@ parse_tag (const char *tag, char **endpoint, char **trailing_tag)
 	return ret;
 
 	err:
+		if (*endpoint)
+			*endpoint = *endpoint + strlen (*endpoint);
 		return NULL;
 }
 
@@ -363,7 +363,8 @@ find_tags_by_name (char *text, char **names, char *leftover)
 		for (i = 0; i < n_names; i++)
 		{
 			struct html_tag *tag = parse_tag (curs[i], &next[i], NULL);
-			html_tag_list_add (full_list, tag);	
+			if (tag)
+				html_tag_list_add (full_list, tag);	
 			/* print_all_tags (full_list); */
 			curs[i] = next[i];
 		}	
