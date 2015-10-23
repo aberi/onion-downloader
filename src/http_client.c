@@ -148,13 +148,13 @@ connect_to_ip (int sock, struct sockaddr_in *addr)
 void
 usage (void)
 {
-	fprintf (stderr, "Usage: ondl <url> [-o | --output-file <output file> ] [-r] [-m http method] [-R | --show-response]\n");
+	fprintf (stderr, "Usage: client <url> [-o output file] [-r] [-m http method]\n");
 	exit (1);
 }
 
 
 char *names[] = {"Host", NULL};
-char *values[] = {"www.google.come", NULL};
+char *values[] = {"www.google.com", NULL};
 
 struct hash_table *
 fill_header_table (char **names, char **values)
@@ -223,7 +223,7 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 	if (options.show_server_response)
 			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
 	
-	close (options.output_fd); 
+	close (options.output_fd);
 
 	return response_content;
 }
@@ -334,15 +334,15 @@ main(int argc, char *argv[])
 
 	init_opt (argc, argv, optstring);
 	parse_url (options.url, &u);
+		
+	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
+	hash_table_put (headers, "Host", u.host);		
 
 	if (options.recursive)
 	{
 		mkdir (u.host, 0755);
 		chdir (u.host);
 	}
-		
-	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
-	hash_table_put (headers, "Host", u.host);		
 	
 	dl_url_file_map = hash_table_new (101);
 
@@ -402,12 +402,9 @@ main(int argc, char *argv[])
 						http_loop (sock, &u, &client, &server, the_list, hrefs, base, method, headers, &resp);
 						
 					}
-					return 1;
 				}
 				break;
-			case 400: /* Could rm the output file */
-			case 403:
-			case 404:
+			case HTTP_NOT_FOUND: /* Could rm the output file */
 				fmt = "rm %s";
 				memset (buf, 0, sizeof (buf));
 				sprintf (buf, fmt, options.output_file);
