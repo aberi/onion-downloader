@@ -148,13 +148,13 @@ connect_to_ip (int sock, struct sockaddr_in *addr)
 void
 usage (void)
 {
-	fprintf (stderr, "Usage: client <url> [-o output file] [-r] [-m http method]\n");
+	fprintf (stderr, "Usage: ondl <url> [-o | --output-file <output file> ] [-r] [-m http method] [-R | --show-response]\n");
 	exit (1);
 }
 
 
 char *names[] = {"Host", NULL};
-char *values[] = {"www.google.com", NULL};
+char *values[] = {"www.google.come", NULL};
 
 struct hash_table *
 fill_header_table (char **names, char **values)
@@ -223,7 +223,7 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 	if (options.show_server_response)
 			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
 	
-	close (options.output_fd);
+	close (options.output_fd); 
 
 	return response_content;
 }
@@ -242,6 +242,46 @@ make_connection (struct url *url, struct sockaddr_in *client, struct sockaddr_in
 	}
 		
 	return sock;
+}
+
+void
+http_loop (int sock, 
+		   struct url *u, 
+		   struct sockaddr_in *client, 
+		   struct sockaddr_in *server, 
+		   struct html_tag_list *the_list, 
+		   char **hrefs,
+		   char *base, 
+		   char *method, 
+		   struct hash_table *headers,
+		   struct response **resp)
+{
+	int k;
+	for (k = 0; k < the_list->count; k++)
+	{
+		if (hrefs[k] && strchr (hrefs[k], '@') == NULL)
+		{
+			char *new_url;
+
+			if (is_absolute (hrefs[k]))
+				new_url = create_new_url_absolute_path (u->host, hrefs[k]);
+			else if (is_relative (hrefs[k]))
+				new_url = create_new_url_relative_path (base, hrefs[k]);
+
+			fprintf (stderr, "New url is %s\n", new_url);
+
+			parse_url (new_url, u);
+			close (sock);
+
+			if ( file_exists (u->path) != 1)
+			{   /* Eventually we want to be using persistent connections instead
+						of reconnecting for every new file. This will be especially
+						important over secure connections to reduce latency. */
+				sock = make_connection (u, client, server);
+				download_file (sock, u, method, headers, resp);
+			}
+		}
+	}
 }
 
 int 
@@ -269,15 +309,15 @@ main(int argc, char *argv[])
 
 	init_opt (argc, argv, optstring);
 	parse_url (options.url, &u);
-		
-	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
-	hash_table_put (headers, "Host", u.host);		
 
 	if (options.recursive)
 	{
 		mkdir (u.host, 0755);
 		chdir (u.host);
 	}
+		
+	headers = fill_header_table (names, values); /* We may as well not have a default "Host" value because of the next line */
+	hash_table_put (headers, "Host", u.host);		
 	
 	dl_url_file_map = hash_table_new (101);
 
@@ -309,7 +349,7 @@ main(int argc, char *argv[])
 	
 							for (k = 0; k < the_list->count; k++)
 							{
-								if (hrefs[k] != 0)
+								if (hrefs[k] && strchr (hrefs[k], '@') == NULL)
 								{
 									char *new_url;
 
@@ -335,8 +375,8 @@ main(int argc, char *argv[])
 						}
 					}
 			return 0;
-			case HTTP_MOVED:
-			case HTTP_FOUND:
+			case 301:
+			case 302:
 				if ((location = hash_table_get (resp->headers, "Location")))
 				{	
 					#ifdef DEBUG
@@ -349,9 +389,20 @@ main(int argc, char *argv[])
 					num_redirect++;
 				}
 				else
+				{
+					close (options.output_fd);
+					if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
+					{
+						the_list = get_links_from_file (options.output_fd);
+			
+						
+					}
 					return 1;
+				}
 				break;
-			case HTTP_NOT_FOUND: /* Could rm the output file */
+			case 400: /* Could rm the output file */
+			case 403:
+			case 404:
 				fmt = "rm %s";
 				memset (buf, 0, sizeof (buf));
 				sprintf (buf, fmt, options.output_file);
