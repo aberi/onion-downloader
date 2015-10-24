@@ -26,6 +26,7 @@
 #define HTTP_PORT 80
 
 static char *optstring = "Rm:o:Op:r";
+static int n_downloaded = 0;
 
 /* static struct hash_table *dl_url_file_map;*/
 
@@ -222,6 +223,9 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 
 	if (options.show_server_response)
 			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
+
+	if (resp->status == 200)	
+		n_downloaded++;
 	
 	close (options.output_fd);
 
@@ -364,6 +368,7 @@ main(int argc, char *argv[])
 
 					if (options.recursive)
 						retrieve_links (sock, &u, &client, &server, method, headers, &resp);	
+					printf ("Retrieved %d files from %s.\n", n_downloaded, u.host);
 					return 0;
 
 			case 301:
