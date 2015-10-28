@@ -1,4 +1,4 @@
-The Onion Downloader is a Poor Man's GNU Wget. I'm writing it purely as an exercise to learn
+The Onion Downloader is a poor man's GNU Wget. I'm writing it purely as an exercise to learn
 how to do network programming and to learn about HTTPS/SSL/TLS and Tor.
 
 It's called the Onion Downloader because one day in the future
@@ -8,22 +8,26 @@ level, cookies, local link conversion for offline viewing, etc.). This would all
 to mirror a Tor hidden service, for example, in the same way that a user might create a
 site mirror by using wget and its '-M' option. 
 
+Compilation is as simple as running the command
+	
+	% make
+
 Here are some examples:
 	
 	Usage: ondl <URL> [-o | --output-file <output_file> ] [-r] [-R | --show-response] 
 
 
-	% ondl http://www.aes.org -r # downloads www.aes.org and saves it as index.html. Downloads all links found within the homepage that are on the host www.aes.org
+	% ./ondl http://www.aes.org -r # downloads www.aes.org and saves it as index.html. Downloads all links found within the homepage that are on the host www.aes.org
 	
-	% ondl aes.org -r # Redirects to new location www.aes.org. Same result as previous example.
+	% ./ondl aes.org -r # Redirects to new location www.aes.org. Same result as previous example.
 
-	% ondl http://hackduke.org -r --show-response # download all the links on the page + show what response the server gave us (e.g. connection type, cookies, etc.)
+	% ./ondl http://hackduke.org -r --show-response # download all the links on the page + show what response the server gave us (e.g. connection type, cookies, etc.)
 	
-	% ondl http://cs.umd.edu/index.php --output-file=index.html # save as ./index.html instead of ./index.php
+	% ./ondl http://cs.umd.edu/index.php --output-file=index.html # save as ./index.html instead of ./index.php
 	
-	% ondl http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf # saves output file to ./hwk1.pdf
+	% ./ondl http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf # saves output file to ./hwk1.pdf
 	
-	% ondl http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf -r # saves output file to ./cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf
+	% ./ondl http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf -r # saves output file to ./cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf
 
 
 Use the options -o or --output-file= to specify an output file. Use --server-response to show the server response. -r specifies
