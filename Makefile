@@ -16,4 +16,4 @@ unit_test.o: unit_test.c
 	$(CC) -c $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm -r *.o ondl *.html *.pdf  *.htm *.com *.edu *.org *.gov *.net
+	rm -r *.o ondl *.html *.pdf  *.htm *.com *.edu *.org *.gov *.net *.io

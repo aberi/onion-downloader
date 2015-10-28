@@ -169,6 +169,8 @@ fill_header_table (char **names, char **values)
 	return headers;
 }
 
+/* Create an output file according to the path given and whether recursion is
+ * turned on. Save the file descriptor of the output file created to the global options variable */
 void
 create_output_file (char *url_path)
 {
@@ -213,6 +215,10 @@ delete_file (const char *filename)
 	system (buf);
 }
 
+/* Download the file specified by the location of url by sending an HTTP request to the remote host given
+ * by that URL. SOCK specifies the socket through which this connection already exists, so an HTTP request
+ * must be sent through that socket, and the response parsed into headers and a body so that the body can
+ * be saved as a file on the local machine. */
 struct content *
 download_file (int sock, struct url *url, char *method, struct hash_table *headers, struct response **response)
 {
@@ -256,6 +262,9 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 	return response_content;
 }
 
+/* Bind the client socket to the local machine and establish a connection to the remote
+ * host given within the url and return the file descriptor of that socket on the
+ * local machine */
 int
 make_connection (struct url *url, struct sockaddr_in *client, struct sockaddr_in *server)
 {
