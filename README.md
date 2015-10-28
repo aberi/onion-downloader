@@ -10,7 +10,7 @@ site mirror by using wget and its '-M' option.
 
 Here are some examples:
 	
-	Usage: ondl <URL> [-o output_file] [-r] [-O]
+	Usage: ondl <URL> [-o | --output-file <output_file> ] [-r] [-R | --show-response] 
 
 
 	% ondl http://www.aes.org -r # downloads www.aes.org and saves it as index.html. Downloads all links found within the homepage that are on the host www.aes.org
