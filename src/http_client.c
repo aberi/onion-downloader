@@ -203,6 +203,16 @@ create_output_file (char *url_path)
 	free (temp);	
 }
 
+void
+delete_file (const char *filename)
+{
+	char *fmt = "rm %s", buf[BUFSIZ];
+	memset (buf, 0, sizeof (buf));
+	sprintf (buf, fmt, filename);
+	fprintf (stderr, "Executing command %s\n", buf);
+	system (buf);
+}
+
 struct content *
 download_file (int sock, struct url *url, char *method, struct hash_table *headers, struct response **response)
 {
@@ -215,7 +225,7 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 
 	req = make_request (url, headers, method);
 	send_request (sock, req);
-
+	
 	response_content = read_response (sock, buf, sizeof (buf));
 
 	parse_response (response_content, resp);
@@ -224,8 +234,22 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 	if (options.show_server_response)
 			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
 
-	if (resp->status == 200)	
-		n_downloaded++;
+	switch (resp->status)
+	{
+		case HTTP_OK:
+			n_downloaded++;
+			break;
+		case 301:
+		case 302:
+		case 400:
+		case 403:
+		case 404:
+			delete_file (options.output_file);
+			break;
+		default:
+			fprintf (stderr, "Not sure how to deal with response code %d\n", resp->status);
+			break;
+	}
 	
 	close (options.output_fd);
 
@@ -330,7 +354,6 @@ int
 main(int argc, char *argv[])
 {
 	char *method = "GET";
-	char buf[BUFSIZ];
 	int sock, num_redirect = 0; /* Socket that is connected to the host and the number of redirections (3xx codes)
 									that have taken place during the current attempt to download a webpage */
 	url_t u;
@@ -363,7 +386,7 @@ main(int argc, char *argv[])
 
 		switch (resp->status)
 		{
-			char *location, *fmt;
+			char *location;
 			case HTTP_OK:
 
 					if (options.recursive)
@@ -400,10 +423,7 @@ main(int argc, char *argv[])
 			case 400: /* Could rm the output file */
 			case 403:
 			case 404:
-				fmt = "rm %s";
-				memset (buf, 0, sizeof (buf));
-				sprintf (buf, fmt, options.output_file);
-				system (buf);
+				delete_file (options.output_file);
 				return 1;
 				break;
 
