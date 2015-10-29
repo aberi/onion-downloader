@@ -80,20 +80,18 @@ enqueue (struct url_queue *q, struct url *url)
 	return 0;
 }
 
+
 void
-print_queue (const struct url_queue *queue, int verbose)
+print_queue (const struct url_queue *queue, int n)
 {
 	int c = 0;
 	if (queue)
 	{
 		struct url *u = queue->head;
-		while (u)
+		while (u && c < n)
 		{
 			printf ("\nURL #%d:\n", ++c);
-			if (verbose)
-				print_url (u);
-			else
-				printf ("%s\n", u->full_url);
+			printf ("%s\n", u->full_url);
 			u = u->next;
 		}
 	}

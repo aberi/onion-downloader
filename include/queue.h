@@ -21,4 +21,8 @@ struct url *dequeue (struct url_queue *);
 int enqueue (struct url_queue *, struct url *url);
 void print_queue (const struct url_queue *, int);
 
+/* A diff function that shows which urls are exclusive to each and
+ * which urls belong to both */
+void url_queue_diff (const struct url_queue *, const struct url_queue *);
+
 #endif

@@ -187,7 +187,6 @@ create_output_file (char *url_path)
 	if (!options.recursive)
 		path = skip_dirs (path);
 	else if (make_dirs (path) != DIR_EXISTS)
-		fprintf (stderr, "The directories necessary to create the file in the location given by %s do not exist.\n", path);
 		/* It's definitely possible (likely) that we are just going to use index.html as the filename if this
  		 * has happened. */
 	#ifdef DEBUG
