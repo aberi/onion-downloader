@@ -37,6 +37,8 @@ pair *advance (struct hash_table *, int current);
 
 pair *init_pair (char *, char *);
 
+void hash_table_destroy (struct hash_table *);
+
 char **keys (const struct hash_table *);
 unsigned long hash (char *);
 struct hash_table *hash_table_new (size_t);

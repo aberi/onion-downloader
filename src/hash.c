@@ -141,6 +141,27 @@ hash_table_copy (struct hash_table *rhs)
 	return ret;
 }
 
+void
+hash_table_destroy (struct hash_table *table)
+{
+	if (table)
+	{
+		int i;
+		for (i = 0; i < table->size; i++)
+		{
+			if (table->table[i].state == OCCUPIED)
+			{
+				free (table->table[i].key);	
+				free (table->table[i].value);	
+			}	
+			else if (table->table[i].state == DELETED)
+				free (table->table[i].key);
+		}
+		free (table->table);	
+		free (table);
+	}
+}
+
 /* Really clean code. Nice job */
 int 
 hash_table_put (struct hash_table *table, char *key, char *value)

@@ -183,6 +183,13 @@ write_to_socket (int sock, char *buf, int len)
 	return 0;
 }
 
+void
+destroy_response (struct response *resp)
+{
+	free (resp->protocol);
+	free (resp->header_body);
+	free (resp);
+}
 	
 int
 parse_response (struct content *resp_content, struct response *resp)
@@ -248,8 +255,20 @@ parse_response (struct content *resp_content, struct response *resp)
 
 	resp->header_body = calloc (1, p - body + 1);
 	strncpy (resp->header_body, body, p - body);
+		
+	destroy_content (resp_content);
 
 	return 0;
+}
+
+void
+destroy_content (struct content *cont)
+{
+	if (cont)
+	{
+		free (cont->body);
+		free (cont);
+	}
 }
 
 void
