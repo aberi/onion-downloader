@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g 
+CFLAGS = -g -Wall -ansi -pedantic -O2
 
 INCLUDE = -I ./include
 
