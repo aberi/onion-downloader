@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g 
+CFLAGS = -g -ansi -pedantic -Wall -DDEBUG
 
 INCLUDE = -I ./include
 
