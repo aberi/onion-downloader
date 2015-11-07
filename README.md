@@ -29,6 +29,8 @@ Here are some examples:
 	
 	% ./ondl http://cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf -r # saves output file to ./cs.umd.edu/class/fall2015/cmsc351/hwk1.pdf
 
+	% ./ondl http://crypto.stackexchange.com -r # Will eventually prompt a 503 status code from the server because of too many requests sent. Same IP address as any other Stackexchange site (e.g. StackOverflow)
+
 
 Use the options -o or --output-file= to specify an output file. Use --server-response to show the server response. -r specifies
 to recurse one level, i.e., download every link within the downloaded page that points to a page on the same remote host (for now,

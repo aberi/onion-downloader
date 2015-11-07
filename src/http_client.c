@@ -111,6 +111,8 @@ create_and_bind_tcp_socket (struct sockaddr_in *addr)
 	return sock;
 }
 
+
+
 int
 resolve_host (const char *hostname, struct sockaddr_in *addr, int port) 
 {
@@ -371,6 +373,9 @@ main(int argc, char *argv[])
 	struct response *resp = malloc (sizeof (struct response)); /* Response given by remote host */
 	struct content *response_content; /* File that would be displayed on a web browser. */
 	struct hash_table *headers; 
+
+	struct url_queue *queue = url_queue_init ();
+
 	resp->status = -1; /* Indicate that the server has not responded yet */
 
 	if (argc < 2)
@@ -387,12 +392,13 @@ main(int argc, char *argv[])
 		mkdir (u.host, 0755);
 		chdir (u.host);
 	}
+
+	enqueue (queue, &u);
 	
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
 		sock = make_connection (&u, &client, &server);
 		response_content = download_file (sock, &u, method, headers, &resp);
-
 		switch (resp->status)
 		{
 			char *location;
