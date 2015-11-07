@@ -18,6 +18,9 @@ struct html_tag_list
 									
 };
 
+void destroy_html_tag (struct html_tag *);
+void destroy_html_tag_list (struct html_tag_list *);
+
 struct html_tag_list *get_all_tags (char *);
 struct html_tag_list *html_tag_list_init (struct html_tag *tag);
 int html_tag_list_add (struct html_tag_list *, struct html_tag *);

@@ -45,6 +45,9 @@ struct request
 	char *http_version;
 };
 
+void destroy_content (struct content *);
+void destroy_response (struct response *);
+
 /* Null-terminated list of names and their corresponding values for the headers */
 struct request *create_request (url_t *url, char **names, char **values, char *method);
 struct request *make_request (url_t *url, struct hash_table *, char *method);
