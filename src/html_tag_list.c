@@ -14,6 +14,28 @@ html_tag_list_is_empty (const struct html_tag_list *list)
 	return 0;
 }
 
+void
+destroy_html_tag (struct html_tag *tag)
+{
+	if (tag)
+	{
+		if (tag->next);
+			destroy_html_tag (tag->next);
+		free (tag->content);
+		hash_table_destroy (tag->attributes);
+		free (tag);
+	}
+}
+
+void destroy_html_tag_list (struct html_tag_list *list)
+{
+	if (list)
+	{
+		destroy_html_tag (list->head);	
+		free (list);
+	}
+}
+
 struct html_tag *
 html_tag_list_remove_head (struct html_tag_list *list)
 {

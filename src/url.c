@@ -42,6 +42,23 @@ static char buf[MAX_URL_LENGTH];
 #endif
 
 char *
+shortened_url (struct url *url)
+{
+	/* 							  "http"          "://"     "www.google.com"      "/intl"    "\0" */
+	char *s_url = calloc (strlen (url->protocol) + 3 + strlen (url->host) + strlen (url->path) + 1, sizeof (char));
+	sprintf (s_url, "%s%s%s%s", url->protocol, "://", url->host, url->path);
+	return s_url;
+}
+
+int
+are_the_same (struct url *u1, struct url *u2)
+{
+	return (strcmp (u1->host, u2->host) == 0) &&
+			(strcmp (u1->protocol, u2->protocol) == 0) &&
+			(strcmp (u1->path, u2->path) == 0);	
+}
+
+char *
 create_new_url_absolute_path (char *host, char *path)
 {
 	char *new_url = malloc (strlen (host) + strlen (path + 1));

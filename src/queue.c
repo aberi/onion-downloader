@@ -7,6 +7,20 @@
 
 /* Insert at the head of the list, remove from the tail */
 
+int
+is_in_queue (const struct url_queue *queue, struct url *url)
+{
+	struct url *cur = queue->head;
+		
+	while (cur)
+	{
+		if (are_the_same (url, cur))
+			return 1;	
+		cur = cur->next;
+	}
+	return 0;
+}
+
 struct url_queue *
 url_queue_init (void)
 {
@@ -66,15 +80,18 @@ enqueue (struct url_queue *q, struct url *url)
 	return 0;
 }
 
+
 void
-print_queue (const struct url_queue *queue)
+print_queue (const struct url_queue *queue, int n)
 {
+	int c = 0;
 	if (queue)
 	{
 		struct url *u = queue->head;
-		while (u)
+		while (u && c < n)
 		{
-			print_url (u);
+			printf ("\nURL #%d:\n", ++c);
+			printf ("%s\n", u->full_url);
 			u = u->next;
 		}
 	}

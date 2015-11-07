@@ -46,8 +46,8 @@ init_pair (char *key, char *value)
 	pair *p = pair_new();
 	if (!p)
 		return NULL;
-	p->key = strdup (key);
-	p->value = strdup (value);
+	p->key = xstrdup (key);
+	p->value = xstrdup (value);
 	
 	return p;
 }
@@ -67,7 +67,7 @@ keys (const struct hash_table *table)
 	for (i = 0; i < table->size; i++)
 	{	
 		if (table->table[i].state == OCCUPIED)
-			list_of_keys[n_inserted++] = strdup (table->table[i].key);
+			list_of_keys[n_inserted++] = xstrdup (table->table[i].key);
 	}		
 
 	list_of_keys[n_inserted] = NULL;
@@ -142,6 +142,27 @@ hash_table_copy (struct hash_table *rhs)
 	return ret;
 }
 
+void
+hash_table_destroy (struct hash_table *table)
+{
+	if (table)
+	{
+		int i;
+		for (i = 0; i < table->size; i++)
+		{
+			if (table->table[i].state == OCCUPIED)
+			{
+				free (table->table[i].key);	
+				free (table->table[i].value);	
+			}	
+			else if (table->table[i].state == DELETED)
+				free (table->table[i].key);
+		}
+		free (table->table);	
+		free (table);
+	}
+}
+
 /* Really clean code. Nice job */
 int 
 hash_table_put (struct hash_table *table, char *key, char *value)
@@ -156,8 +177,8 @@ hash_table_put (struct hash_table *table, char *key, char *value)
 			{
 			case EMPTY:
 			case DELETED: 
-				list[index].key = strdup (key);
-				list[index].value = strdup (value);
+				list[index].key = xstrdup (key);
+				list[index].value = xstrdup (value);
 				list[index].state = OCCUPIED;
 				table->count++;
 				return 0;
@@ -166,7 +187,7 @@ hash_table_put (struct hash_table *table, char *key, char *value)
 				if (strcmp (key, list[index].key) == 0)
 				{
 					free (list[index].value);
-					list[index].value = strdup (value);
+					list[index].value = xstrdup (value);
 					return 0;
 				}
 				else
@@ -202,7 +223,7 @@ char *hash_table_remove (struct hash_table *table, char *key)
 			case OCCUPIED:
 				if (strcmp (key, list[index].key) == 0)
 				{	
-					char *value = strdup (list[index].value);
+					char *value = xstrdup (list[index].value);
 					free (list[index].value);
 					list[index].value = NULL;
 					list[index].state = DELETED;

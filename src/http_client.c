@@ -29,7 +29,7 @@
 static char *optstring = "Rm:o:Op:r";
 static int n_downloaded = 0;
 
-/* static struct hash_table *dl_url_file_map;*/
+static struct hash_table *dl_url_file_map;
 
 struct opt options;
 
@@ -190,7 +190,6 @@ create_output_file (char *url_path)
 	if (!options.recursive)
 		path = skip_dirs (path);
 	else if (make_dirs (path) != DIR_EXISTS)
-		fprintf (stderr, "The directories necessary to create the file in the location given by %s do not exist.\n", path);
 		/* It's definitely possible (likely) that we are just going to use index.html as the filename if this
  		 * has happened. */
 	#ifdef DEBUG
@@ -253,6 +252,8 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 		case 400:
 		case 403:
 		case 404:
+		case 500:
+		case 503:
 			delete_file (options.output_file);
 			break;
 		default:
@@ -308,6 +309,7 @@ http_loop (int sock,
 		{
 			char *new_url;
 			char *temp;
+			char *s_url;
 
 			if ( is_absolute (hrefs[k]) )
 				new_url = create_new_url_absolute_path (u->host, hrefs[k]);
@@ -320,16 +322,26 @@ http_loop (int sock,
 			temp = strdup (new_url);
 			parse_url (temp, u);
 			free (temp);
+	
+			s_url = shortened_url (u);
+
+			fprintf (stderr, "Using the url %s\n", s_url);	
+		
+			parse_url (s_url, u);
 
 			close (sock);
 
-			if ( file_exists (u->path) != 1)
-			{   /* Eventually we want to be using persistent connections instead
-						of reconnecting for every new file. This will be especially
-						important over secure connections to reduce latency. */
+			if ( file_exists (u->path) != 1 && hash_table_get (dl_url_file_map, s_url) == NULL)
+			{   
+				fprintf (stderr, "File has not been downloaded, attempting to do so...\n\n");
 				sock = make_connection (u, client, server);
 				download_file (sock, u, method, headers, resp);
+				hash_table_put (dl_url_file_map, s_url, options.output_file);
 			}
+			else
+				fprintf (stderr, "Already downloaded the file; going to the next one on the queue\n\n");
+			free (s_url);
+
 		}
 	}
 }
@@ -362,6 +374,82 @@ retrieve_links (int sock,
 	}
 }
 
+void
+download_loop (int sock,
+			   struct url_queue *queue,
+			   struct hash_table *headers,
+	   		   char *http_method,
+			   struct sockaddr_in *client,
+			   struct sockaddr_in *server,
+			   struct response **resp)
+{
+	while (!url_queue_is_empty (queue))
+	{
+		struct url *url = dequeue (queue);
+		/* Check that we have not already downloaded the file */
+		if (hash_table_get (dl_url_file_map, url->full_url) == NULL)
+		{
+			int new_fd, k;
+			
+			/* Download the file based on the URL that was dequeued.
+ 				Don't shorten the URL after dequeueing. Instead,
+				we should shorten it before it goes on the queue. */ 
+			/* s_url = shortened_url (url);	
+  			   parse_url (s_url, url); */
+
+			close (sock);
+			sock = make_connection (url, client, server);
+			download_file (sock, url, http_method, headers, resp);
+	
+			hash_table_put (dl_url_file_map, url->full_url, options.output_file);
+
+			/* Parse the downloaded file for links */
+			close (options.output_fd); /* Currently it is O_WRONLY; we need to read it */
+
+			if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
+			{
+				char **hrefs, *base;
+				struct html_tag_list *the_list;
+				char *new_url;
+				int n_links;
+			
+				the_list = get_links_from_file (new_fd);
+		
+				hrefs = get_all_attribute (the_list, "href", not_outgoing);
+				n_links = the_list->count;	
+				
+				destroy_html_tag_list (the_list);
+				base = get_url_directory (url);
+	
+				for (k = 0; k < n_links; k++)
+				{
+					struct url *link = malloc (sizeof (struct url));
+					char *s_url;
+			
+					/* Make the new url based on the path found within the link attribute */
+					if ( is_absolute (hrefs[k]) )
+						new_url = create_new_url_absolute_path (url->host, hrefs[k]);
+					
+					else if ( is_relative (hrefs[k]) )
+						new_url = create_new_url_relative_path (base, hrefs[k]);
+				
+					/* Parse the URL and get rid of queries/things we don't care about (yet) */	
+					parse_url (new_url, link);
+					s_url = shortened_url (link);	
+					parse_url (s_url, link);
+	
+					free (s_url);
+				
+					/* There is really no way we should attempt to download the same page multiple times */
+					if (hash_table_get (dl_url_file_map, s_url) == NULL && !is_in_queue (queue, link))	
+						enqueue (queue, link);
+				}
+			}
+			close (new_fd);
+		}
+	}	
+}	
+
 int 
 main(int argc, char *argv[])
 {
@@ -377,6 +465,8 @@ main(int argc, char *argv[])
 
 	struct url_queue *queue = url_queue_init ();
 
+	dl_url_file_map = hash_table_new (1019);
+	
 	resp->status = -1; /* Indicate that the server has not responded yet */
 
 	if (argc < 2)
@@ -393,7 +483,6 @@ main(int argc, char *argv[])
 		mkdir (u.host, 0755);
 		chdir (u.host);
 	}
-
 	enqueue (queue, &u);
 	
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
@@ -406,7 +495,7 @@ main(int argc, char *argv[])
 			case HTTP_OK:
 
 					if (options.recursive)
-						retrieve_links (sock, &u, &client, &server, method, headers, &resp);	
+						/* retrieve_links (sock, &u, &client, &server, method, headers, &resp);	 */
 					printf ("Retrieved %d files from %s.\n", n_downloaded, u.host);
 					return 0;
 
