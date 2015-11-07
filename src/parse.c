@@ -404,7 +404,7 @@ find_tag (char *text, char *name)
 {
 	while (text && *text)
 	{
-		while (*text != '<')
+		while (*text &&  *text != '<')
 			text++;
 		if (*text == '\0') break;	
 		text++;
