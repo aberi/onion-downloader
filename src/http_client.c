@@ -494,7 +494,7 @@ main(int argc, char *argv[])
 			case HTTP_OK:
 
 					if (options.recursive)
-						/* retrieve_links (sock, &u, &client, &server, method, headers, &resp);	 */
+						retrieve_links (sock, &u, &client, &server, method, headers, &resp);
 					printf ("Retrieved %d files from %s.\n", n_downloaded, u.host);
 					return 0;
 
