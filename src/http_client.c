@@ -402,7 +402,7 @@ url_queue_download (int sock,
 			for (k = 0; k < the_list->count; k++)
 			{
 				char *new_url, *tmp;
-				if (queue->size < 100 && strstr (hrefs[k], "mailto") == NULL)
+				if (queue->size < 100)
 				{
 					if ( is_absolute (hrefs[k]) )
 						new_url = create_new_url_absolute_path ( u->host, hrefs[k] );
@@ -411,12 +411,16 @@ url_queue_download (int sock,
 						new_url = create_new_url_relative_path ( base, hrefs[k] );
 					
 					parse_url (new_url, u);		
+
+					/* Shorten the url so we don't even try put multiple instances of the same
+ 					   location onto the queue. */ 
 		
 					/* Enqueue is set up so that it will not put the same URL on the queue twice.
  		   			Since this is not a general purpose queue, this will work; in a general
 		   			purpose queue we might allow the same item to be placed onto the queue 
 		   			multiple times */
-					enqueue (queue, u);
+					if (strstr (new_url, "mailto") == NULL)
+						enqueue (queue, u);
 				}
 			}
 		}
