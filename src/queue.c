@@ -54,10 +54,14 @@ dequeue (struct url_queue *q)
 int
 enqueue (struct url_queue *q, struct url *url)
 {
-	struct url *local_url = calloc (1, sizeof (struct url));
+	struct url *local_url;
 
 	if (!q) return -1;
 	if (!url) return 0;
+	
+	if (is_in_queue (q, url)) return 0;
+
+	local_url = calloc (1, sizeof (struct url));
 
 	if (!local_url)
 	{

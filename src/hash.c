@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 void 
 hash_table_print (const struct hash_table *table)
 {

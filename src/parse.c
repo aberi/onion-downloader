@@ -404,7 +404,9 @@ find_tag (char *text, char *name)
 {
 	while (text && *text)
 	{
-		while (*text &&  *text != '<')
+		/* Keep checking whether or not we have reached the end of the file
+		   to avoid seg faults */
+		while (*text && *text != '<')
 			text++;
 		if (*text == '\0') break;	
 		text++;

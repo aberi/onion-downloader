@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g 
+CFLAGS = -g -DDEBUG # -ansi -pedantic -Wall -DDEBUG
 
 INCLUDE = -I ./include
 
@@ -16,4 +16,4 @@ unit_test.o: unit_test.c
 	$(CC) -c $(CFLAGS) $(INCLUDE) $< -o $@
 
 clean:
-	rm -r *.o ondl *.html *.pdf  *.htm *.com *.edu *.org *.gov *.net *.io *.jpg *.png *.jpeg
+	rm -rf *.o ondl *.html *.pdf  *.htm *.com *.edu *.org *.gov *.net *.io *.jpg *.png *.jpeg www.*

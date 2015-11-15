@@ -11,7 +11,6 @@
 #include <fcntl.h>
 #include <getopt.h>
 
-
 #include "hash.h"
 #include "opt.h"
 #include "url.h"
@@ -29,7 +28,7 @@
 static char *optstring = "Rm:o:Op:r";
 static int n_downloaded = 0;
 
-/* static struct hash_table *dl_url_file_map;*/
+static struct hash_table *dl_url_file_map;
 
 struct opt options;
 
@@ -111,6 +110,8 @@ create_and_bind_tcp_socket (struct sockaddr_in *addr)
 	
 	return sock;
 }
+
+
 
 int
 resolve_host (const char *hostname, struct sockaddr_in *addr, int port) 
@@ -305,7 +306,7 @@ http_loop (int sock,
 		if (hrefs[k] && strchr (hrefs[k], '@') == NULL && strstr (hrefs[k], "://") == NULL) /* Avoid downloading "mailto" links */
 		{
 			char *new_url;
-			char *temp;
+/*			char *temp; */
 
 			if ( is_absolute (hrefs[k]) )
 				new_url = create_new_url_absolute_path (u->host, hrefs[k]);
@@ -315,9 +316,9 @@ http_loop (int sock,
 
 			fprintf (stderr, "New url is %s\n", new_url);
 
-			temp = strdup (new_url);
-			parse_url (temp, u);
-			free (temp);
+			/*temp = strdup (new_url); */
+			parse_url (new_url, u);
+			/* free (temp); */
 
 			close (sock);
 
@@ -360,6 +361,68 @@ retrieve_links (int sock,
 	}
 }
 
+void
+url_queue_download (int sock, 
+				    struct url_queue *queue,
+				    struct sockaddr_in *client,
+					struct sockaddr_in *server,
+					char *method,
+					struct hash_table *headers,
+					struct response **resp)
+{
+	int k, new_fd;
+	struct html_tag_list *the_list; /* List of <a> HTML tags retrieved from the last file that was downloaded */
+	char **hrefs; 					/* Extracted href attributes from the list of <a> tags */
+	char *base;						/* URL from which every link has descended from (although right now the
+									   client will ascend through the directory structure by default */
+
+	while ( !url_queue_is_empty (queue) ) /* Make sure there is still some URL left on the queue. If not, we are done. */
+	{
+		url_t *u = dequeue (queue);
+		sock = make_connection (u, client, server);
+		download_file (sock, u, method, headers, resp);
+		close (sock); /* Need to reopen it (for now) to send a new request later so we should close
+						 it to avoid running out of file descriptors */
+
+		/* After the file is downloaded, the global file descriptor referring to the downloaded file is referring to
+ 		   a file that is write-only. Thus, we need to make it so that we can read from it so that we can parse it. */
+		
+		close (options.output_fd);
+		if ((new_fd = open (options.output_file, O_RDONLY, 0)) != -1)
+		{
+			/* Parse the file and retrieve all the links from the file that go to another file on the same
+		   	host. Don't check whether or not the IP address is the same (hostnames could be different but
+		   	they could be aliases for one another) */
+			the_list = get_links_from_file (new_fd);
+			hrefs = get_all_attribute (the_list, "href", not_outgoing);
+
+			/* Extract the base directory so that we can build absolute or relative links as we please */
+			base = get_url_directory (u);
+
+			for (k = 0; k < the_list->count; k++)
+			{
+				char *new_url, *tmp;
+				if (queue->size < 100 && strstr (hrefs[k], "mailto") == NULL)
+				{
+					if ( is_absolute (hrefs[k]) )
+						new_url = create_new_url_absolute_path ( u->host, hrefs[k] );
+		
+					else if ( is_relative (hrefs[k]) )
+						new_url = create_new_url_relative_path ( base, hrefs[k] );
+					
+					parse_url (new_url, u);		
+		
+					/* Enqueue is set up so that it will not put the same URL on the queue twice.
+ 		   			Since this is not a general purpose queue, this will work; in a general
+		   			purpose queue we might allow the same item to be placed onto the queue 
+		   			multiple times */
+					enqueue (queue, u);
+				}
+			}
+		}
+	}
+}
+	
 int 
 main(int argc, char *argv[])
 {
@@ -372,6 +435,10 @@ main(int argc, char *argv[])
 	struct response *resp = malloc (sizeof (struct response)); /* Response given by remote host */
 	struct content *response_content; /* File that would be displayed on a web browser. */
 	struct hash_table *headers; 
+	struct url_queue *queue = url_queue_init ();
+
+	dl_url_file_map = hash_table_new (1019);
+	
 	resp->status = -1; /* Indicate that the server has not responded yet */
 
 	if (argc < 2)
@@ -388,19 +455,22 @@ main(int argc, char *argv[])
 		mkdir (u.host, 0755);
 		chdir (u.host);
 	}
+	enqueue (queue, &u);
+
+	if (options.recursive)
+		url_queue_download (sock, queue, &client, &server, method, headers, &resp);	
 	
 	while (resp->status != HTTP_OK && num_redirect < MAX_REDIRECT)
 	{
 		sock = make_connection (&u, &client, &server);
 		response_content = download_file (sock, &u, method, headers, &resp);
-
 		switch (resp->status)
 		{
 			char *location;
 			case HTTP_OK:
 
 					if (options.recursive)
-						retrieve_links (sock, &u, &client, &server, method, headers, &resp);	
+						url_queue_download (sock, queue, &client, &server, method, headers, &resp);
 					printf ("Retrieved %d files from %s.\n", n_downloaded, u.host);
 					return 0;
 

@@ -16,21 +16,21 @@ test_queue (void)
 	struct url u, *url = &u;
 	parse_url ("http://ftp.gnu.org/gnu/wget", url);
 	enqueue (queue, url);
-	print_queue (queue);
+	print_queue (queue, 3);
 
 	parse_url ("http://www.ucla.edu", url);
 	enqueue (queue, url);
-	print_queue (queue);
+	print_queue (queue, 3);
 
 	parse_url ("http://www.ucla.edu", url);
 	enqueue (queue, url);
-	print_queue (queue);
+	print_queue (queue, 3);
 
 	url = dequeue (queue);
-	print_queue (queue);
+	print_queue (queue, 3);
 
 	url = dequeue (queue);
-	print_queue (queue);
+	print_queue (queue, 3);
 
 	return 0;	
 		
