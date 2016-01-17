@@ -14,7 +14,8 @@ hash_table_print (const struct hash_table *table)
 	while (*k)
 	{
 		char *v = hash_table_get (table, *k);
-		printf ("%s --> %s\n", *k, v);	
+		if (v) 
+			printf ("%s --> %s\n", *k, v);	
 		k++;
 	}
 }

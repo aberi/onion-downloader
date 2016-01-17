@@ -9,6 +9,22 @@
 #include "types.h"
 
 int
+test_split_path(void)
+{
+	char **subdirs = split_path	("columbia/files/slideshow/../slideshow");
+
+	while (*subdirs)
+	{
+		printf ("%s -> ", *subdirs);
+	}
+	
+	return 0;
+
+	fail:
+		return -1;
+}
+
+int
 test_queue (void)
 {
 	struct url_queue *queue = url_queue_init ();
@@ -65,8 +81,14 @@ main (void)
 
 	if (test_queue () < 0) goto fail;	
 	if (test_url_shorten () < 0) goto fail;	
+	if (test_split_path () < 0) 
+	{
+		printf( "Failed to split the path properly\n");
+		goto fail;
+	}
 		
 	return 0;
 	
-	fail: return -1;
+	fail: 
+		return -1;
 }

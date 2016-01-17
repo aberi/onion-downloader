@@ -35,6 +35,8 @@ typedef struct url {
 	struct url *next; /* We will be using URLs in lists quite often. This field may or may not be used */
 } url_t;
 
+char **split_path (char *);
+
 char *shortened_url (struct url *);
 
 int are_the_same (struct url *, struct url *);

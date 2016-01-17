@@ -42,6 +42,55 @@ static char buf[MAX_URL_LENGTH];
 #endif
 
 char *
+simplify_url (struct url *url)
+{
+	return NULL;	
+}
+
+char **
+split_path (char *path)
+{
+	char **subdirs = malloc (sizeof (char *)), *tmp;
+	int n_subdirs = 0;
+
+	if (strcmp (path, "") == 0 || strcmp (path, "/") == 0)
+	{
+		subdirs[0] = "";
+		return subdirs;
+	}
+
+	while ( path && *path && (tmp = strchr(path, '/')))
+	{
+		size_t len = tmp - path;
+		char *buf = malloc (len + 1);
+
+		strncpy (buf, path, len);
+		buf[len] = '\0';
+
+		subdirs = realloc (subdirs, sizeof (char *) * (n_subdirs + 1));
+		subdirs[n_subdirs] = calloc (strlen (buf) + 1, sizeof (char));
+		strncpy (subdirs[n_subdirs++], buf, strlen(buf));
+		
+		free (buf);	
+		
+		path = tmp + 1;	
+	}
+	
+	if (path && *path)
+	{
+		subdirs = realloc (subdirs, sizeof (char *) * (n_subdirs + 1));
+		subdirs[n_subdirs] = calloc (strlen (path) + 1, sizeof (char));
+		strncpy (subdirs[n_subdirs++], path, strlen (path));
+	}
+	
+	subdirs = realloc (subdirs, sizeof (char *) * (n_subdirs + 1));
+	subdirs[n_subdirs] = NULL;
+	
+	return subdirs;
+
+}
+
+char *
 shortened_url (struct url *url)
 {
 	/* 							  "http"          "://"     "www.google.com"      "/intl"    "\0" */

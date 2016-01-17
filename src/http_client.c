@@ -226,41 +226,48 @@ download_file (int sock, struct url *url, char *method, struct hash_table *heade
 {
 	struct request *req;	
 	char buf[BUFSIZ];
-	struct content *response_content;
+	struct content *response_content = NULL;
 	struct response *resp = malloc (sizeof (struct response));
 
 	create_output_file (url->path);
-
-	req = make_request (url, headers, method);
-	send_request (sock, req);
 	
-	response_content = read_response (sock, buf, sizeof (buf));
-
-	parse_response (response_content, resp);
-	*response = resp;	
-
-	if (options.show_server_response)
+	if ( hash_table_get (dl_url_file_map, url->full_url) == NULL)
+	{
+		req = make_request (url, headers, method);
+		send_request (sock, req);
+		
+		response_content = read_response (sock, buf, sizeof (buf));
+	
+		parse_response (response_content, resp);
+		*response = resp;	
+	
+		hash_table_put (dl_url_file_map, url->full_url, options.output_file);
+		hash_table_print(dl_url_file_map);
+		sleep(1);								/* Give us a chance to view the hash table */	
+	
+		if (options.show_server_response)
 			printf ("\n\n************* SERVER RESPONSE ***************\n\n%s\n", resp->header_body);
 
-	switch (resp->status)
-	{
-		case HTTP_OK:
-			n_downloaded++;
-			break;
-		case 301:
-		case 302:
-		case 400:
-		case 403:
-		case 404:
-			delete_file (options.output_file);
-			break;
-		default:
-			fprintf (stderr, "Not sure how to deal with response code %d\n", resp->status);
-			break;
-	}
+		switch (resp->status)
+		{
+			case HTTP_OK:
+				n_downloaded++;
+				break;
+			case 301:
+			case 302:
+			case 400:
+			case 403:
+			case 404:
+				delete_file (options.output_file);
+				break;
+			default:
+				fprintf (stderr, "Not sure how to deal with response code %d\n", resp->status);
+				break;
+		}
 	
-	close (options.output_fd);
-
+		close (options.output_fd);
+			
+	}
 	return response_content;
 }
 
@@ -306,7 +313,6 @@ http_loop (int sock,
 		if (hrefs[k] && strchr (hrefs[k], '@') == NULL && strstr (hrefs[k], "://") == NULL) /* Avoid downloading "mailto" links */
 		{
 			char *new_url;
-/*			char *temp; */
 
 			if ( is_absolute (hrefs[k]) )
 				new_url = create_new_url_absolute_path (u->host, hrefs[k]);
@@ -419,7 +425,7 @@ url_queue_download (int sock,
  		   			Since this is not a general purpose queue, this will work; in a general
 		   			purpose queue we might allow the same item to be placed onto the queue 
 		   			multiple times */
-					if (strstr (new_url, "mailto") == NULL)
+					if (strstr (new_url, "mailto") == NULL && strstr (new_url, "javascript") == NULL)
 						enqueue (queue, u);
 				}
 			}
