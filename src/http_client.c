@@ -423,6 +423,7 @@ url_queue_download (int sock,
 						enqueue (queue, u);
 				}
 			}
+			close (new_fd);
 		}
 	}
 }
@@ -439,7 +440,7 @@ main(int argc, char *argv[])
 	struct response *resp = malloc (sizeof (struct response)); /* Response given by remote host */
 	struct content *response_content; /* File that would be displayed on a web browser. */
 	struct hash_table *headers; 
-	struct url_queue *queue = url_queue_init ();
+	struct url_queue *queue = url_queue_init (); /* Create the queue */
 
 	dl_url_file_map = hash_table_new (1019);
 	
