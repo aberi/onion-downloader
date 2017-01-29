@@ -43,4 +43,3 @@ The 'infinite\_recursion' branch is where I am working on using a queue to
 allow for an arbitrary recursion depth. The master branch only allows for 
 recursion depth of 1.
 
-One major TODO is to use an HTML parsing engine instead of trying to write a naive one myself... It's dirty but somehow does a B+ job.
